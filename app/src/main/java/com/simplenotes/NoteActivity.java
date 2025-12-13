@@ -4,9 +4,10 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import android.widget.Toast;
+import android.text.style.StyleSpan;
+import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
-import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
@@ -188,10 +189,10 @@ public class NoteActivity extends AppCompatActivity {
         ssb.append("\"").append(verseText).append("\"");
         int end = ssb.length();
 
-        int highlightColor = ContextCompat.getColor(this, R.color.highlight_gold);
-        int textColor = ContextCompat.getColor(this, R.color.bible_blue_dark);
+        // Use Gold color for text and make it Bold
+        int textColor = ContextCompat.getColor(this, R.color.bible_gold);
 
-        ssb.setSpan(new BackgroundColorSpan(highlightColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        ssb.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         ssb.setSpan(new ForegroundColorSpan(textColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         editTextContent.setText(ssb);

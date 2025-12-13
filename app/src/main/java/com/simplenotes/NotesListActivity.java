@@ -10,6 +10,12 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
+import android.net.Uri;
+import android.widget.Toast;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class NotesListActivity extends AppCompatActivity {
     private RecyclerView recyclerViewNotes;
@@ -71,6 +77,9 @@ public class NotesListActivity extends AppCompatActivity {
                 break;
             case UNPIN:
                 togglePin(note, false);
+                break;
+            case SHARE:
+                shareNoteAsFile(note);
                 break;
         }
     }
