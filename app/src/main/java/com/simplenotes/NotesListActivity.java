@@ -17,7 +17,7 @@ public class NotesListActivity extends AppCompatActivity {
     private TextView textViewEmpty;
     private NotesAdapter notesAdapter;
     private AppDatabase database;
-    // Removed local list 'notes' as we will fetch fresh from DB
+    private android.view.Menu menu;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +41,7 @@ public class NotesListActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         notesAdapter = new NotesAdapter(new ArrayList<>()); // Empty init
         notesAdapter.setOnNoteClickListener(this::onNoteClicked);
+        notesAdapter.setOnNoteLongClickListener(this::onNoteLongClicked);
 
         recyclerViewNotes.setLayoutManager(new LinearLayoutManager(this));
         recyclerViewNotes.setAdapter(notesAdapter);
@@ -60,6 +61,8 @@ public class NotesListActivity extends AppCompatActivity {
             AppExecutors.getInstance().mainThread().execute(() -> {
                 notesAdapter.updateNotes(notes);
                 updateEmptyState(notes);
+                notesAdapter.clearSelection();
+                updateDeleteMenuState();
             });
         });
     }
@@ -75,10 +78,62 @@ public class NotesListActivity extends AppCompatActivity {
     }
 
     private void onNoteClicked(Note note) {
-        Intent intent = new Intent(this, NoteActivity.class);
-        intent.putExtra("note", note);
-        intent.putExtra("isNewNote", false);
-        startActivity(intent);
+        if (notesAdapter.getSelectedCount() > 0) {
+            notesAdapter.toggleSelection(note);
+            updateDeleteMenuState();
+        } else {
+            Intent intent = new Intent(this, NoteActivity.class);
+            intent.putExtra("note", note);
+            intent.putExtra("isNewNote", false);
+            startActivity(intent);
+        }
+    }
+
+    private void onNoteLongClicked(Note note) {
+        notesAdapter.toggleSelection(note);
+        updateDeleteMenuState();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(android.view.Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_notes_list, menu);
+        this.menu = menu;
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if (item.getItemId() == R.id.action_delete) {
+            deleteSelectedNotes();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void updateDeleteMenuState() {
+        if (menu != null) {
+            android.view.MenuItem deleteItem = menu.findItem(R.id.action_delete);
+            if (deleteItem != null) {
+                boolean hasSelection = notesAdapter.getSelectedCount() > 0;
+                deleteItem.setEnabled(hasSelection);
+
+                // Update icon appearance (simple alpha change or tint can be used)
+                android.graphics.drawable.Drawable icon = deleteItem.getIcon();
+                if (icon != null) {
+                    icon.setAlpha(hasSelection ? 255 : 130);
+                }
+            }
+        }
+    }
+
+    private void deleteSelectedNotes() {
+        List<Note> selectedNotes = notesAdapter.getSelectedNotes();
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            for (Note note : selectedNotes) {
+                database.noteDao().delete(note);
+            }
+            AppExecutors.getInstance().mainThread().execute(this::loadNotes);
+        });
     }
 
     @Override

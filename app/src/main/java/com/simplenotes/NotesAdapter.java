@@ -14,14 +14,16 @@ import java.util.Locale;
 
 public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHolder> {
     private List<Note> notes;
+    private List<Note> selectedNotes = new ArrayList<>();
     private OnNoteClickListener onNoteClickListener;
+    private OnNoteLongClickListener onNoteLongClickListener;
 
     public interface OnNoteClickListener {
         void onNoteClick(Note note);
     }
 
-    public NotesAdapter() {
-        this.notes = new ArrayList<>();
+    public interface OnNoteLongClickListener {
+        void onNoteLongClick(Note note);
     }
 
     public NotesAdapter(List<Note> notes) {
@@ -32,6 +34,10 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         this.onNoteClickListener = listener;
     }
 
+    public void setOnNoteLongClickListener(OnNoteLongClickListener listener) {
+        this.onNoteLongClickListener = listener;
+    }
+
     public void updateNotes(List<Note> newNotes) {
         this.notes.clear();
         if (newNotes != null) {
@@ -40,9 +46,26 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         notifyDataSetChanged();
     }
 
-    public void addNote(Note note) {
-        notes.add(0, note);
-        notifyItemInserted(0);
+    public void toggleSelection(Note note) {
+        if (selectedNotes.contains(note)) {
+            selectedNotes.remove(note);
+        } else {
+            selectedNotes.add(note);
+        }
+        notifyDataSetChanged();
+    }
+
+    public void clearSelection() {
+        selectedNotes.clear();
+        notifyDataSetChanged();
+    }
+
+    public List<Note> getSelectedNotes() {
+        return new ArrayList<>(selectedNotes);
+    }
+
+    public int getSelectedCount() {
+        return selectedNotes.size();
     }
 
     @NonNull
@@ -55,7 +78,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
     @Override
     public void onBindViewHolder(@NonNull NoteViewHolder holder, int position) {
         Note note = notes.get(position);
-        holder.bind(note);
+        holder.bind(note, selectedNotes.contains(note));
     }
 
     @Override
@@ -79,15 +102,25 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                     onNoteClickListener.onNoteClick(notes.get(getAdapterPosition()));
                 }
             });
+
+            itemView.setOnLongClickListener(v -> {
+                if (onNoteLongClickListener != null && getAdapterPosition() != RecyclerView.NO_POSITION) {
+                    onNoteLongClickListener.onNoteLongClick(notes.get(getAdapterPosition()));
+                    return true;
+                }
+                return false;
+            });
         }
 
-        public void bind(Note note) {
+        public void bind(Note note, boolean isSelected) {
             textViewTitle.setText(note.getTitle().isEmpty() ? "Untitled" : note.getTitle());
             textViewContent.setText(note.getContent().isEmpty() ? "No content" : note.getContent());
-            
+
             SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault());
             String formattedDate = dateFormat.format(new Date(note.getTimestamp()));
             textViewTimestamp.setText(formattedDate);
+
+            itemView.setBackgroundColor(isSelected ? 0xFFE0E0E0 : 0xFFFFFFFF);
         }
     }
 }
