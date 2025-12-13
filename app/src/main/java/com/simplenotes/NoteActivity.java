@@ -81,8 +81,8 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void checkForBibleReference(String text) {
-        // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 )
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([a-zA-Z\\s]+ \\d+:\\d+) $");
+        // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([a-zA-Z0-9\\s]+ \\d+:\\d+) $");
         java.util.regex.Matcher matcher = pattern.matcher(text);
 
         if (matcher.find()) {
