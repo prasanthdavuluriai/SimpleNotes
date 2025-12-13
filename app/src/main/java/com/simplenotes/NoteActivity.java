@@ -2,7 +2,7 @@ package com.simplenotes;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
+
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.textfield.TextInputEditText;
@@ -11,7 +11,7 @@ import com.google.android.material.textfield.TextInputLayout;
 public class NoteActivity extends AppCompatActivity {
     private TextInputEditText editTextTitle;
     private TextInputEditText editTextContent;
-    private Button buttonSave;
+
     private TextInputLayout layoutTitle;
     private TextInputLayout layoutContent;
 
@@ -29,14 +29,14 @@ public class NoteActivity extends AppCompatActivity {
 
         initViews();
         checkIntentData();
-        setupSaveButton();
+
         setupMagicFetch();
     }
 
     private void initViews() {
         editTextTitle = findViewById(R.id.editTextTitle);
         editTextContent = findViewById(R.id.editTextContent);
-        buttonSave = findViewById(R.id.buttonSave);
+
         layoutTitle = findViewById(R.id.layoutTitle);
         layoutContent = findViewById(R.id.layoutContent);
     }
@@ -59,10 +59,6 @@ public class NoteActivity extends AppCompatActivity {
                 currentNote = new Note();
             }
         }
-    }
-
-    private void setupSaveButton() {
-        buttonSave.setOnClickListener(v -> saveNote());
     }
 
     private void setupMagicFetch() {
