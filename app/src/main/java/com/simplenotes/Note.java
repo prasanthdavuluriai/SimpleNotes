@@ -12,6 +12,7 @@ public class Note implements Serializable {
     private String title;
     private String content;
     private long timestamp;
+    private boolean isPinned;
 
     public Note() {
         this.id = System.currentTimeMillis();
@@ -66,6 +67,14 @@ public class Note implements Serializable {
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public boolean isPinned() {
+        return isPinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        isPinned = pinned;
     }
 
     @Override
