@@ -20,6 +20,12 @@ public class NoteActivity extends AppCompatActivity {
     private TextInputLayout layoutTitle;
     private TextInputLayout layoutContent;
 
+    // Version Switcher
+    private android.widget.TextView textViewVersion;
+    private android.widget.ImageButton buttonVersion;
+    private String currentTranslation = "web"; // Default
+    private java.util.Map<String, String> bibleVersions;
+
     private Note currentNote;
     private boolean isNewNote = true;
 
@@ -35,6 +41,8 @@ public class NoteActivity extends AppCompatActivity {
         initViews();
         checkIntentData();
 
+        initializeBibleVersions();
+        setupVersionSwitcher();
         setupMagicFetch();
     }
 
@@ -44,6 +52,9 @@ public class NoteActivity extends AppCompatActivity {
 
         layoutTitle = findViewById(R.id.layoutTitle);
         layoutContent = findViewById(R.id.layoutContent);
+
+        textViewVersion = findViewById(R.id.textViewVersion);
+        buttonVersion = findViewById(R.id.buttonVersion);
     }
 
     private void checkIntentData() {
@@ -68,6 +79,49 @@ public class NoteActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    private void initializeBibleVersions() {
+        bibleVersions = new java.util.LinkedHashMap<>();
+        bibleVersions.put("Cherokee New Testament", "cherokee");
+        bibleVersions.put("Chinese Union Version", "cuv");
+        bibleVersions.put("Czech Bible kralick", "bkr"); // Note: encoding might need care, using simple chars if needed
+                                                         // or unicode
+        bibleVersions.put("American Standard (1901)", "asv");
+        bibleVersions.put("Bible in Basic English", "bbe");
+        bibleVersions.put("Darby Bible", "darby");
+        bibleVersions.put("Douay-Rheims 1899", "dra");
+        bibleVersions.put("King James Version", "kjv");
+        bibleVersions.put("World English Bible", "web");
+        bibleVersions.put("Young's Literal (NT)", "ylt");
+        bibleVersions.put("Open English (Commonwealth)", "oeb-cw");
+        bibleVersions.put("Open English (US)", "oeb-us");
+        bibleVersions.put("World English (British)", "webbe");
+        bibleVersions.put("Latin Vulgate", "clementine");
+        bibleVersions.put("Portuguese Almeida", "almeida");
+        bibleVersions.put("Romanian Corrected", "rccv");
+    }
+
+    private void setupVersionSwitcher() {
+        buttonVersion.setOnClickListener(v -> {
+            android.widget.PopupMenu popup = new android.widget.PopupMenu(this, v);
+            int index = 0;
+            for (String name : bibleVersions.keySet()) {
+                popup.getMenu().add(0, index++, 0, name);
+            }
+
+            popup.setOnMenuItemClickListener(item -> {
+                String selectedName = item.getTitle().toString();
+                currentTranslation = bibleVersions.get(selectedName);
+                textViewVersion.setText("Bible Version: " + selectedName); // Update text
+                Toast.makeText(this, "Set to: " + selectedName, Toast.LENGTH_SHORT).show();
+                return true;
+            });
+            popup.show();
+        });
+
+        // Restore default text
+        textViewVersion.setText("Bible Version: World English Bible");
     }
 
     private void setupMagicFetch() {
@@ -101,7 +155,7 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void fetchVerse(String reference) {
-        com.simplenotes.api.ApiClient.getService().getVerse(reference)
+        com.simplenotes.api.ApiClient.getService().getVerse(reference, currentTranslation)
                 .enqueue(new retrofit2.Callback<com.simplenotes.api.BibleResponse>() {
                     @Override
                     public void onResponse(retrofit2.Call<com.simplenotes.api.BibleResponse> call,
