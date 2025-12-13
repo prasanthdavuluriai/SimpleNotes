@@ -1,6 +1,9 @@
 package com.simplenotes;
 
+import androidx.room.Entity;
 import androidx.room.Ignore;
+import androidx.room.PrimaryKey;
+import java.io.Serializable;
 
 @Entity(tableName = "notes")
 public class Note implements Serializable {
