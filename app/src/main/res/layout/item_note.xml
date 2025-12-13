@@ -5,7 +5,8 @@
     android:layout_height="wrap_content"
     android:layout_margin="4dp"
     app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    app:cardElevation="4dp"
+    app:cardBackgroundColor="@color/bible_blue_medium">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -17,7 +18,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_pin"
-            app:tint="@android:color/holo_blue_dark"
+            app:tint="@color/bible_gold"
             android:visibility="gone"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -30,6 +31,7 @@
             android:src="@drawable/ic_more_vert"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
+            app:tint="@color/bible_gold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -39,7 +41,7 @@
             android:layout_height="wrap_content"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="@android:color/black"
+            android:textColor="@color/bible_cream"
             android:maxLines="1"
             android:ellipsize="end"
             app:layout_constraintStart_toStartOf="parent"
@@ -52,7 +54,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:textSize="14sp"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="#CCF5F5DC"
             android:maxLines="3"
             android:ellipsize="end"
             app:layout_constraintStart_toStartOf="parent"
@@ -65,7 +67,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="12sp"
-            android:textColor="@android:color/darker_gray"
+            android:textColor="#80F5F5DC"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/textViewContent"
             android:layout_marginTop="8dp" />
