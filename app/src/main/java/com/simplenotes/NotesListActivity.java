@@ -75,6 +75,44 @@ public class NotesListActivity extends AppCompatActivity {
         }
     }
 
+    private void shareNoteAsFile(Note note) {
+        try {
+            // Create shared_notes directory in cache if it doesn't exist
+            File cachePath = new File(getCacheDir(), "shared_notes");
+            cachePath.mkdirs();
+
+            // Create the file: Title.txt
+            String fileName = (note.getTitle().isEmpty() ? "Untitled" : note.getTitle()) + ".txt";
+            // Sanitize filename to avoid issues with special chars
+            fileName = fileName.replaceAll("[^a-zA-Z0-9.\\-]", "_");
+
+            File newFile = new File(cachePath, fileName);
+
+            // Write content
+            FileOutputStream stream = new FileOutputStream(newFile);
+            String content = note.getContent() == null ? "" : note.getContent();
+            stream.write(content.getBytes());
+            stream.close();
+
+            // Get URI
+            Uri contentUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", newFile);
+
+            // Share Intent
+            if (contentUri != null) {
+                Intent shareIntent = new Intent();
+                shareIntent.setAction(Intent.ACTION_SEND);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                shareIntent.setDataAndType(contentUri, "text/plain");
+                shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                startActivity(Intent.createChooser(shareIntent, "Share Note via"));
+            }
+
+        } catch (IOException e) {
+            Toast.makeText(this, "Error sharing note", Toast.LENGTH_SHORT).show();
+            e.printStackTrace();
+        }
+    }
+
     private void deleteNote(Note note) {
         AppExecutors.getInstance().diskIO().execute(() -> {
             database.noteDao().delete(note);

@@ -28,7 +28,8 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
     public enum Action {
         DELETE,
         PIN,
-        UNPIN
+        UNPIN,
+        SHARE
     }
 
     public NotesAdapter(List<Note> notes) {
@@ -96,7 +97,8 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         private void showPopupMenu(View view, Note note) {
             android.widget.PopupMenu popup = new android.widget.PopupMenu(view.getContext(), view);
             popup.getMenu().add(0, 1, 0, note.isPinned() ? "Unpin" : "Pin");
-            popup.getMenu().add(0, 2, 0, "Delete");
+            popup.getMenu().add(0, 2, 0, "Share");
+            popup.getMenu().add(0, 3, 0, "Delete");
 
             popup.setOnMenuItemClickListener(item -> {
                 if (onNoteActionListener == null)
@@ -107,6 +109,9 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                         onNoteActionListener.onAction(note, note.isPinned() ? Action.UNPIN : Action.PIN);
                         return true;
                     case 2:
+                        onNoteActionListener.onAction(note, Action.SHARE);
+                        return true;
+                    case 3:
                         onNoteActionListener.onAction(note, Action.DELETE);
                         return true;
                     default:
