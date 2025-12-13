@@ -16,7 +16,7 @@ import com.google.android.material.textfield.TextInputLayout;
 
 public class NoteActivity extends AppCompatActivity {
     private TextInputEditText editTextTitle;
-    private TextInputEditText editTextContent;
+    private androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView editTextContent;
 
     private TextInputLayout layoutTitle;
     private TextInputLayout layoutContent;
@@ -126,6 +126,12 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void setupMagicFetch() {
+        // Setup Autocomplete
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line, BibleData.BOOKS);
+        editTextContent.setAdapter(adapter);
+        editTextContent.setTokenizer(new BibleTokenizer());
+
         editTextContent.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -142,6 +148,54 @@ public class NoteActivity extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    private static class BibleTokenizer
+            implements androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView.Tokenizer {
+        @Override
+        public int findTokenStart(CharSequence text, int cursor) {
+            int i = cursor;
+            while (i > 0 && text.charAt(i - 1) != '@') {
+                i--;
+            }
+            if (i > 0 && text.charAt(i - 1) == '@') {
+                return i;
+            }
+            return cursor; // No @ found, default behavior (won't trigger)
+        }
+
+        @Override
+        public int findTokenEnd(CharSequence text, int cursor) {
+            int i = cursor;
+            int len = text.length();
+            while (i < len) {
+                if (text.charAt(i) == ' ' || text.charAt(i) == '\n') {
+                    return i;
+                } else {
+                    i++;
+                }
+            }
+            return len;
+        }
+
+        @Override
+        public CharSequence terminateToken(CharSequence text) {
+            int i = text.length();
+            while (i > 0 && text.charAt(i - 1) == ' ') {
+                i--;
+            }
+            if (i > 0 && text.charAt(i - 1) instanceof Character) {
+                return text + " ";
+            } else {
+                if (text instanceof android.text.Spanned) {
+                    SpannableStringBuilder sp = new SpannableStringBuilder(text);
+                    sp.append(" ");
+                    return sp;
+                } else {
+                    return text + " ";
+                }
+            }
+        }
     }
 
     private void checkForBibleReference(String text) {
