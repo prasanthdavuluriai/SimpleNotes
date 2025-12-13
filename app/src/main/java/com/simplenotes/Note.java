@@ -1,8 +1,6 @@
 package com.simplenotes;
 
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-import java.io.Serializable;
+import androidx.room.Ignore;
 
 @Entity(tableName = "notes")
 public class Note implements Serializable {
@@ -19,6 +17,7 @@ public class Note implements Serializable {
         this.timestamp = System.currentTimeMillis();
     }
 
+    @Ignore
     public Note(String title, String content) {
         this.id = System.currentTimeMillis();
         this.title = title;
@@ -26,6 +25,7 @@ public class Note implements Serializable {
         this.timestamp = System.currentTimeMillis();
     }
 
+    @Ignore
     public Note(long id, String title, String content, long timestamp) {
         this.id = id;
         this.title = title;
