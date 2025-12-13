@@ -184,7 +184,7 @@ public class NoteActivity extends AppCompatActivity {
             while (i > 0 && text.charAt(i - 1) == ' ') {
                 i--;
             }
-            if (i > 0 && text.charAt(i - 1) instanceof Character) {
+            if (i > 0 && Character.isLetterOrDigit(text.charAt(i - 1))) {
                 return text + " ";
             } else {
                 if (text instanceof android.text.Spanned) {
