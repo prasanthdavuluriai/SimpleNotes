@@ -4,6 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import android.widget.Toast;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ForegroundColorSpan;
+import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -117,12 +122,26 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void appendVerseToContent(String verseText) {
-        String currentText = editTextContent.getText().toString();
-        // Remove the trailing space that triggered the fetch
-        // and append the verse
-        String newText = currentText.trim() + "\n\"" + verseText.trim() + "\"\n";
-        editTextContent.setText(newText);
-        editTextContent.setSelection(newText.length());
+        String currentContent = editTextContent.getText().toString();
+
+        SpannableStringBuilder ssb = new SpannableStringBuilder(currentContent);
+
+        if (!currentContent.isEmpty() && !currentContent.endsWith("\n")) {
+            ssb.append("\n");
+        }
+
+        int start = ssb.length();
+        ssb.append("\"").append(verseText).append("\"");
+        int end = ssb.length();
+
+        int highlightColor = ContextCompat.getColor(this, R.color.highlight_gold);
+        int textColor = ContextCompat.getColor(this, R.color.bible_blue_dark);
+
+        ssb.setSpan(new BackgroundColorSpan(highlightColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        ssb.setSpan(new ForegroundColorSpan(textColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        editTextContent.setText(ssb);
+        editTextContent.setSelection(ssb.length());
     }
 
     @Override

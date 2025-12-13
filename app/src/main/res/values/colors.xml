@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bible_blue_dark">#0D1B2A</color>
+    <color name="bible_blue_medium">#1B263B</color>
+    <color name="bible_gold">#D4AF37</color>
+    <color name="bible_gold_dim">#AA8C2C</color>
+    <color name="bible_cream">#F5F5DC</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <!-- Accent for highlights -->
+    <color name="highlight_gold">#40D4AF37</color> 
+</resources>
