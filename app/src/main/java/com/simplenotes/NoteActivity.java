@@ -143,9 +143,10 @@ public class NoteActivity extends AppCompatActivity {
         currentNote.setContent(content);
         currentNote.setTimestamp(System.currentTimeMillis());
 
-        // Save to DB (Update only, since insert happened at creation)
+        // Save to DB (Using insert with REPLACE acts as Upsert, ensuring it saves even
+        // if initial insert missed)
         AppExecutors.getInstance().diskIO().execute(() -> {
-            database.noteDao().update(currentNote);
+            database.noteDao().insert(currentNote);
         });
     }
 }
