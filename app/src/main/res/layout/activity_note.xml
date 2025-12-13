@@ -77,15 +77,17 @@
                 android:layout_height="match_parent"
                 android:background="@null"
                 android:hint="@string/note_content"
+                android:padding="16dp"
                 android:inputType="textMultiLine|textCapSentences"
                 android:minLines="10"
                 android:maxLines="20"
                 android:textSize="16sp"
                 android:scrollbars="vertical"
                 android:gravity="top|start"
-                android:textColor="@color/selector_text_editor"
+                android:textColor="@color/bible_cream"
                 android:textColorHint="#80F5F5DC" 
-                android:completionThreshold="1" />
+                android:completionThreshold="1"
+                android:popupBackground="@drawable/bg_autocomplete" />
 
         </com.google.android.material.textfield.TextInputLayout>
 

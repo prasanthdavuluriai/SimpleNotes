@@ -129,7 +129,7 @@ public class NoteActivity extends AppCompatActivity {
     private void setupMagicFetch() {
         // Setup Autocomplete
         android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this,
-                android.R.layout.simple_dropdown_item_1line, BibleData.BOOKS);
+                R.layout.item_autocomplete, BibleData.BOOKS);
         editTextContent.setAdapter(adapter);
         editTextContent.setTokenizer(new BibleTokenizer());
 
