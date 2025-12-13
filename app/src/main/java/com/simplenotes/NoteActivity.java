@@ -57,6 +57,10 @@ public class NoteActivity extends AppCompatActivity {
             } else {
                 setTitle(R.string.new_note);
                 currentNote = new Note();
+                // Immediate save for new notes
+                AppExecutors.getInstance().diskIO().execute(() -> {
+                    database.noteDao().insert(currentNote);
+                });
             }
         }
     }
@@ -121,42 +125,27 @@ public class NoteActivity extends AppCompatActivity {
         editTextContent.setSelection(newText.length());
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveNote();
+    }
+
     private void saveNote() {
+        if (currentNote == null)
+            return;
+
         String title = editTextTitle.getText().toString().trim();
         String content = editTextContent.getText().toString().trim();
 
-        // Validate input
-        if (title.isEmpty() && content.isEmpty()) {
-            Toast.makeText(this, "Please enter a title or content", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Update note data
+        // Update note data in memory
         currentNote.setTitle(title);
         currentNote.setContent(content);
         currentNote.setTimestamp(System.currentTimeMillis());
 
-        // Save to DB
+        // Save to DB (Update only, since insert happened at creation)
         AppExecutors.getInstance().diskIO().execute(() -> {
-            if (isNewNote) {
-                database.noteDao().insert(currentNote);
-            } else {
-                database.noteDao().update(currentNote);
-            }
-            AppExecutors.getInstance().mainThread().execute(this::finish);
+            database.noteDao().update(currentNote);
         });
-    }
-
-    @Override
-    public void onBackPressed() {
-        // Check if there are unsaved changes
-        String title = editTextTitle.getText().toString().trim();
-        String content = editTextContent.getText().toString().trim();
-
-        if (!title.isEmpty() || !content.isEmpty()) {
-            saveNote();
-        } else {
-            super.onBackPressed();
-        }
     }
 }
