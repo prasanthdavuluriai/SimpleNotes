@@ -69,6 +69,7 @@ public class NoteActivity extends AppCompatActivity {
                 if (currentNote != null) {
                     editTextTitle.setText(currentNote.getTitle());
                     editTextContent.setText(currentNote.getContent());
+                    applyVerseStyling();
                     setTitle(R.string.edit_note);
                 }
             } else {
@@ -239,18 +240,36 @@ public class NoteActivity extends AppCompatActivity {
             ssb.append("\n");
         }
 
-        int start = ssb.length();
-        ssb.append("\"").append(verseText).append("\"");
-        int end = ssb.length();
+        // Invisible marker to identify Bible verses for styling persistence
+        String marker = "\u200B";
+        String formattedVerse = marker + "\"" + verseText + "\"" + marker;
 
-        // Use Gold color for text and make it Bold
-        int textColor = ContextCompat.getColor(this, R.color.bible_gold);
-
-        ssb.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        ssb.setSpan(new ForegroundColorSpan(textColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        ssb.append(formattedVerse);
 
         editTextContent.setText(ssb);
         editTextContent.setSelection(ssb.length());
+
+        applyVerseStyling();
+    }
+
+    private void applyVerseStyling() {
+        android.text.Editable text = editTextContent.getText();
+        String content = text.toString();
+
+        // Regex to find content wrapped in invisible markers: \u200B"..."\u200B
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B");
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+
+        int textColor = ContextCompat.getColor(this, R.color.bible_gold);
+
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+
+            // Apply Bold and Gold
+            text.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            text.setSpan(new ForegroundColorSpan(textColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
     }
 
     @Override
