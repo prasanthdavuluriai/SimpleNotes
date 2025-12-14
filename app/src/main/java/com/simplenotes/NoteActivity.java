@@ -257,7 +257,9 @@ public class NoteActivity extends AppCompatActivity {
         String content = text.toString();
 
         // Regex to find content wrapped in invisible markers: \u200B"..."\u200B
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B");
+        // DOTALL mode required to match verses spanning multiple lines
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
+                java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher matcher = pattern.matcher(content);
 
         int textColor = ContextCompat.getColor(this, R.color.bible_gold);
