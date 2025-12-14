@@ -226,7 +226,8 @@ public class NoteActivity extends AppCompatActivity {
         // followed by whitespace
         // Matches "@Book Chapter:Verse" followed by one or more whitespace characters
         // at the end
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+))\\s+$");
+        java.util.regex.Pattern pattern = java.util.regex.Pattern
+                .compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+(?:-\\d+)?))\\s+$");
         java.util.regex.Matcher matcher = pattern.matcher(text);
 
         if (matcher.find()) {
