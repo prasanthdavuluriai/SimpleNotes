@@ -64,6 +64,7 @@
         android:layout_weight="1"
         android:layout_marginBottom="24dp"
         android:hint="@string/note_content"
+        app:expandedHintEnabled="false"
         app:boxBackgroundMode="outline">
 
         <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView

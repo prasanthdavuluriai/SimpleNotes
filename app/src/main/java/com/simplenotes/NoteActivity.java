@@ -62,6 +62,11 @@ public class NoteActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize hint state
+        if (editTextContent.getText().length() == 0) {
+            editTextContent.setHint(R.string.magic_fetch_guide);
+        }
+
         layoutTitle = findViewById(R.id.layoutTitle);
         layoutContent = findViewById(R.id.layoutContent);
 
