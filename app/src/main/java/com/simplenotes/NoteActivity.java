@@ -244,9 +244,37 @@ public class NoteActivity extends AppCompatActivity {
                     public void onResponse(retrofit2.Call<com.simplenotes.api.BibleResponse> call,
                             retrofit2.Response<com.simplenotes.api.BibleResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            String verseText = response.body().getText();
-                            if (verseText != null) {
-                                replaceTextWithVerse(fullTrigger, reference, verseText);
+                            // Check for multiple verses first
+                            if (response.body().getVerses() != null && !response.body().getVerses().isEmpty()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (com.simplenotes.api.BibleResponse.Verse v : response.body().getVerses()) {
+                                    // Format: Book Chapter:Verse, then Newline, then "Text", then Newline
+                                    String ref = v.getBookName() + " " + v.getChapter() + ":" + v.getVerse();
+                                    sb.append(ref).append("\n");
+
+                                    // We need to handle the invisible markers and styling here or in
+                                    // replaceTextWithVerse
+                                    // The easiest way is to pass the raw text block to replaceTextWithVerse,
+                                    // but replaceTextWithVerse expects "reference" and "text".
+                                    // Let's modify replaceTextWithVerse to handle a pre-formatted block if needed,
+                                    // OR we can just format it all here as "text" and pass an empty reference.
+
+                                    sb.append("\u200B\"").append(v.getText()).append("\"\u200B\n\n");
+                                }
+                                // Remove last newlines
+                                if (sb.length() > 2) {
+                                    sb.setLength(sb.length() - 2);
+                                }
+
+                                // We'll pass empty reference because we embedded references in the text.
+                                replaceTextWithVerse(fullTrigger, "", sb.toString());
+
+                            } else {
+                                String verseText = response.body().getText();
+                                if (verseText != null) {
+                                    // Standard single verse handling
+                                    replaceTextWithVerse(fullTrigger, reference, verseText);
+                                }
                             }
                         }
                     }
@@ -266,15 +294,18 @@ public class NoteActivity extends AppCompatActivity {
         if (triggerIndex != -1) {
             SpannableStringBuilder ssb = new SpannableStringBuilder();
 
-            // Format: Reference (Newline) "Verse"
-            ssb.append(reference).append("\n");
+            if (!reference.isEmpty()) {
+                // Format: Reference (Newline) "Verse"
+                ssb.append(reference).append("\n");
 
-            // Invisible marker to identify Bible verses for styling persistence
-            String marker = "\u200B";
-            String formattedVerse = marker + "\"" + verseText + "\"" + marker;
-
-            int startVerse = ssb.length();
-            ssb.append(formattedVerse);
+                // Invisible marker to identify Bible verses for styling persistence
+                String marker = "\u200B";
+                String formattedVerse = marker + "\"" + verseText + "\"" + marker;
+                ssb.append(formattedVerse);
+            } else {
+                // Pre-formatted block (Multi-verse)
+                ssb.append(verseText);
+            }
 
             // Replace the trigger characters
             editable.replace(triggerIndex, triggerIndex + fullTrigger.length(), ssb);
