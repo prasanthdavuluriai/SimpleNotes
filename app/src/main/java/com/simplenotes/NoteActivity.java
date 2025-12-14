@@ -150,6 +150,25 @@ public class NoteActivity extends AppCompatActivity {
                         checkForBibleReference(s.toString());
                     }
                 }
+
+                // Dynamic Dropdown Positioning
+                // Only adjust if the user types '@' (start of trigger) or tokens
+                if (editTextContent.getLayout() != null) {
+                    int pos = editTextContent.getSelectionStart();
+                    int line = editTextContent.getLayout().getLineForOffset(pos);
+                    int bottom = editTextContent.getLayout().getLineBottom(line);
+
+                    // The default behavior anchors to the bottom of the View.
+                    // We need a negative offset to bring it up to the cursor line.
+                    int height = editTextContent.getHeight();
+                    int scrollY = editTextContent.getScrollY();
+
+                    // Offset = (Cursor Line Bottom - Scroll Position) - View Height
+                    // Effectively moves the anchor point from bottom of view to the cursor line
+                    int offset = (bottom - scrollY) - height;
+
+                    editTextContent.setDropDownVerticalOffset(offset);
+                }
             }
         });
     }
