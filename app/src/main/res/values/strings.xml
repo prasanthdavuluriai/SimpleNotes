@@ -3,7 +3,8 @@
     <string name="app_name">Bible Notes</string>
     <string name="add_note">Add Note</string>
     <string name="note_title">Note Title</string>
-    <string name="note_content">Start typing or use @Book ch:v (e.g. @John 3:16) to fetch verses...</string>
+    <string name="note_content">Note Content</string>
+    <string name="magic_fetch_guide">Start typing...\nUse @Book ch:v (e.g. @John 3:16) to fetch verses</string>
     <string name="save">Save</string>
     <string name="new_note">New Note</string>
     <string name="edit_note">Edit Note</string>

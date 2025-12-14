@@ -57,7 +57,7 @@ public class NoteActivity extends AppCompatActivity {
                 editTextContent.setHint("");
             } else {
                 if (editTextContent.getText().length() == 0) {
-                    editTextContent.setHint(R.string.note_content);
+                    editTextContent.setHint(R.string.magic_fetch_guide);
                 }
             }
         });

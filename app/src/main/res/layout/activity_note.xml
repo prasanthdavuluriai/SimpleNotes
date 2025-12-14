@@ -63,6 +63,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_marginBottom="24dp"
+        android:hint="@string/note_content"
         app:boxBackgroundMode="outline">
 
         <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
@@ -70,7 +71,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@null"
-            android:hint="@string/note_content"
             android:padding="16dp"
             android:inputType="textMultiLine|textCapSentences"
             android:minLines="10"
@@ -78,7 +78,7 @@
             android:scrollbars="vertical"
             android:gravity="top|start"
             android:textColor="@color/bible_cream"
-            android:textColorHint="#80F5F5DC" 
+            android:textColorHint="#80F5F5DC"
             android:completionThreshold="1"
             android:popupBackground="@drawable/bg_autocomplete" />
 
