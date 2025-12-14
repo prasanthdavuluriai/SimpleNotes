@@ -51,6 +51,17 @@ public class NoteActivity extends AppCompatActivity {
         editTextTitle = findViewById(R.id.editTextTitle);
         editTextContent = findViewById(R.id.editTextContent);
 
+        // Dynamic Hint Logic: Hide explanation when user clicks to type
+        editTextContent.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                editTextContent.setHint("");
+            } else {
+                if (editTextContent.getText().length() == 0) {
+                    editTextContent.setHint(R.string.note_content);
+                }
+            }
+        });
+
         layoutTitle = findViewById(R.id.layoutTitle);
         layoutContent = findViewById(R.id.layoutContent);
 
