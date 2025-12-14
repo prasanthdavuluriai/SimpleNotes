@@ -201,16 +201,17 @@ public class NoteActivity extends AppCompatActivity {
 
     private void checkForBibleReference(String text) {
         // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([a-zA-Z0-9\\s]+ \\d+:\\d+) $");
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+) )$");
         java.util.regex.Matcher matcher = pattern.matcher(text);
 
         if (matcher.find()) {
-            String reference = matcher.group(1).trim();
-            fetchVerse(reference);
+            String fullTrigger = matcher.group(1); // The whole "@Luke 1:1 "
+            String reference = matcher.group(2).trim(); // "Luke 1:1"
+            fetchVerse(reference, fullTrigger);
         }
     }
 
-    private void fetchVerse(String reference) {
+    private void fetchVerse(String reference, String fullTrigger) {
         com.simplenotes.api.ApiClient.getService().getVerse(reference, currentTranslation)
                 .enqueue(new retrofit2.Callback<com.simplenotes.api.BibleResponse>() {
                     @Override
@@ -219,7 +220,7 @@ public class NoteActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null) {
                             String verseText = response.body().getText();
                             if (verseText != null) {
-                                appendVerseToContent(verseText);
+                                replaceTextWithVerse(fullTrigger, reference, verseText);
                             }
                         }
                     }
@@ -231,24 +232,46 @@ public class NoteActivity extends AppCompatActivity {
                 });
     }
 
-    private void appendVerseToContent(String verseText) {
+    private void replaceTextWithVerse(String fullTrigger, String reference, String verseText) {
+        android.text.Editable editable = editTextContent.getText();
+        String currentContent = editable.toString();
+
+        int triggerIndex = currentContent.lastIndexOf(fullTrigger);
+        if (triggerIndex != -1) {
+            SpannableStringBuilder ssb = new SpannableStringBuilder();
+
+            // Format: Reference (Newline) "Verse"
+            ssb.append(reference).append("\n");
+
+            // Invisible marker to identify Bible verses for styling persistence
+            String marker = "\u200B";
+            String formattedVerse = marker + "\"" + verseText + "\"" + marker;
+
+            int startVerse = ssb.length();
+            ssb.append(formattedVerse);
+
+            // Replace the trigger characters
+            editable.replace(triggerIndex, triggerIndex + fullTrigger.length(), ssb);
+
+            // Re-apply styling (will handle the new content)
+            applyVerseStyling();
+        } else {
+            // Fallback if trigger text not found
+            appendVerseToContentFallback(verseText);
+        }
+    }
+
+    private void appendVerseToContentFallback(String verseText) {
         String currentContent = editTextContent.getText().toString();
-
         SpannableStringBuilder ssb = new SpannableStringBuilder(currentContent);
-
         if (!currentContent.isEmpty() && !currentContent.endsWith("\n")) {
             ssb.append("\n");
         }
-
-        // Invisible marker to identify Bible verses for styling persistence
         String marker = "\u200B";
         String formattedVerse = marker + "\"" + verseText + "\"" + marker;
-
         ssb.append(formattedVerse);
-
         editTextContent.setText(ssb);
         editTextContent.setSelection(ssb.length());
-
         applyVerseStyling();
     }
 
