@@ -144,8 +144,11 @@ public class NoteActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(android.text.Editable s) {
-                if (s.length() > 0 && s.charAt(s.length() - 1) == ' ') {
-                    checkForBibleReference(s.toString());
+                if (s.length() > 0) {
+                    char lastChar = s.charAt(s.length() - 1);
+                    if (Character.isWhitespace(lastChar)) {
+                        checkForBibleReference(s.toString());
+                    }
                 }
             }
         });
@@ -201,7 +204,10 @@ public class NoteActivity extends AppCompatActivity {
 
     private void checkForBibleReference(String text) {
         // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+) )$");
+        // followed by whitespace
+        // Matches "@Book Chapter:Verse" followed by one or more whitespace characters
+        // at the end
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+))\\s+$");
         java.util.regex.Matcher matcher = pattern.matcher(text);
 
         if (matcher.find()) {
