@@ -10,8 +10,8 @@ android {
         applicationId "com.simplenotes"
         minSdk 21
         targetSdk 33
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "2.0 (Final)"
     }
 
     buildTypes {
