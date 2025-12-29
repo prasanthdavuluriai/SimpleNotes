@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import android.widget.Toast;
+import java.util.List;
 import android.text.style.StyleSpan;
 import android.graphics.Typeface;
 import android.text.Spannable;
@@ -134,6 +135,132 @@ public class NoteActivity extends AppCompatActivity {
         // Restore default text or fetch current from DB preference if we had one
         // For now, keep simple default
         textViewVersion.setText("Bible Version: World English Bible");
+    }
+
+    private void setupMagicFetch() {
+        // Setup Autocomplete
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this,
+                R.layout.item_autocomplete, BibleData.BOOKS);
+        editTextContent.setAdapter(adapter);
+        editTextContent.setTokenizer(new BibleTokenizer());
+
+        editTextContent.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                if (s.length() > 0) {
+                    int cursorPos = editTextContent.getSelectionStart();
+                    if (cursorPos > 0) {
+                        char lastChar = s.charAt(cursorPos - 1);
+                        if (Character.isWhitespace(lastChar)) {
+                            // Check text only up to the cursor
+                            checkForBibleReference(s.subSequence(0, cursorPos).toString(), cursorPos);
+                        }
+                    }
+                }
+
+                // Dynamic Dropdown Positioning
+                // Only adjust if the user types '@' (start of trigger) or tokens
+                if (editTextContent.getLayout() != null) {
+                    int pos = editTextContent.getSelectionStart();
+                    int line = editTextContent.getLayout().getLineForOffset(pos);
+                    int bottom = editTextContent.getLayout().getLineBottom(line);
+
+                    // The default behavior anchors to the bottom of the View.
+                    // We need a negative offset to bring it up to the cursor line.
+                    int height = editTextContent.getHeight();
+                    int scrollY = editTextContent.getScrollY();
+
+                    // Offset = (Cursor Line Bottom - Scroll Position) - View Height
+                    // Effectively moves the anchor point from bottom of view to the cursor line
+                    int offset = (bottom - scrollY) - height;
+
+                    editTextContent.setDropDownVerticalOffset(offset);
+                }
+            }
+        });
+    }
+
+    private static class BibleTokenizer
+            implements androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView.Tokenizer {
+        @Override
+        public int findTokenStart(CharSequence text, int cursor) {
+            int i = cursor;
+            while (i > 0 && text.charAt(i - 1) != '@') {
+                i--;
+            }
+            if (i > 0 && text.charAt(i - 1) == '@') {
+                return i;
+            }
+            return cursor; // No @ found, default behavior (won't trigger)
+        }
+
+        @Override
+        public int findTokenEnd(CharSequence text, int cursor) {
+            int i = cursor;
+            int len = text.length();
+            while (i < len) {
+                if (text.charAt(i) == ' ' || text.charAt(i) == '\n') {
+                    return i;
+                } else {
+                    i++;
+                }
+            }
+            return len;
+        }
+
+        @Override
+        public CharSequence terminateToken(CharSequence text) {
+            int i = text.length();
+            while (i > 0 && text.charAt(i - 1) == ' ') {
+                i--;
+            }
+            if (i > 0 && Character.isLetterOrDigit(text.charAt(i - 1))) {
+                return text + " ";
+            } else {
+                if (text instanceof android.text.Spanned) {
+                    SpannableStringBuilder sp = new SpannableStringBuilder(text);
+                    sp.append(" ");
+                    return sp;
+                } else {
+                    return text + " ";
+                }
+            }
+        }
+    }
+
+    private void checkForBibleReference(String text, int cursorPos) {
+        // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
+        // followed by whitespace
+        // Matches "@Book Chapter:Verse" followed by one or more whitespace characters
+        // at the end
+        java.util.regex.Pattern pattern = java.util.regex.Pattern
+                .compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+(?:-\\d+)?))\\s+$");
+        java.util.regex.Matcher matcher = pattern.matcher(text);
+
+        if (matcher.find()) {
+            String fullTrigger = matcher.group(1); // The whole "@Luke 1:1 "
+            String reference = matcher.group(2).trim(); // "Luke 1:1"
+
+            // Calculate start index based on match length and cursor position
+            // Since we matched against the substring ending at cursorPos, the end of match
+            // is effectively cursorPos (minus trailing whitespace potentially caught by
+            // regex but group 1 captures strict trigger part usually, let's correspond)
+            // Actually group 0 is the whole match including waiting whitespace.
+            // We want to replace group 0.
+
+            int matchEnd = cursorPos; // Because we anchored to $ of substring(0, cursorPos)
+            int matchStart = matchEnd - matcher.group(0).length();
+
+            fetchVerse(reference, matchStart, matchEnd);
+        }
     }
 
     private void fetchVerse(String reference, int startIdx, int endIdx) {
