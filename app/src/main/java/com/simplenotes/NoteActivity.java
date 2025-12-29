@@ -122,188 +122,139 @@ public class NoteActivity extends AppCompatActivity {
 
     private void setupVersionSwitcher() {
         buttonVersion.setOnClickListener(v -> {
-            android.widget.PopupMenu popup = new android.widget.PopupMenu(this, v);
-            int index = 0;
-            for (String name : bibleVersions.keySet()) {
-                popup.getMenu().add(0, index++, 0, name);
-            }
-
-            popup.setOnMenuItemClickListener(item -> {
-                String selectedName = item.getTitle().toString();
-                currentTranslation = bibleVersions.get(selectedName);
-                textViewVersion.setText("Bible Version: " + selectedName); // Update text
-                Toast.makeText(this, "Set to: " + selectedName, Toast.LENGTH_SHORT).show();
-                return true;
+            BibleVersionSheet sheet = new BibleVersionSheet();
+            sheet.setListener(version -> {
+                currentTranslation = version.getId();
+                textViewVersion.setText("Bible Version: " + version.getName());
+                Toast.makeText(this, "Set to: " + version.getName(), Toast.LENGTH_SHORT).show();
             });
-            popup.show();
+            sheet.show(getSupportFragmentManager(), "BibleVersionSheet");
         });
 
-        // Restore default text
+        // Restore default text or fetch current from DB preference if we had one
+        // For now, keep simple default
         textViewVersion.setText("Bible Version: World English Bible");
     }
 
-    private void setupMagicFetch() {
-        // Setup Autocomplete
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<>(this,
-                R.layout.item_autocomplete, BibleData.BOOKS);
-        editTextContent.setAdapter(adapter);
-        editTextContent.setTokenizer(new BibleTokenizer());
+    private void fetchVerse(String reference, int startIdx, int endIdx) {
+        // Parse reference to find Book, Chapter, Verse for DB lookup
+        // Ref format: "Book Name Chapter:Verse" or "Book Name Chapter:Start-End"
+        // e.g. "John 3:16" or "1 Samuel 2:10"
 
-        editTextContent.addTextChangedListener(new android.text.TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            try {
+                // 1. Check Local DB
+                BibleDao dao = database.bibleDao();
+                String refTrimmed = reference.trim();
+                int lastSpace = refTrimmed.lastIndexOf(' ');
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
+                if (lastSpace != -1) {
+                    String book = refTrimmed.substring(0, lastSpace).trim();
+                    String versePart = refTrimmed.substring(lastSpace + 1).trim();
+                    String[] cv = versePart.split(":");
 
-            @Override
-            public void afterTextChanged(android.text.Editable s) {
-                if (s.length() > 0) {
-                    int cursorPos = editTextContent.getSelectionStart();
-                    if (cursorPos > 0) {
-                        char lastChar = s.charAt(cursorPos - 1);
-                        if (Character.isWhitespace(lastChar)) {
-                            // Check text only up to the cursor
-                            checkForBibleReference(s.subSequence(0, cursorPos).toString(), cursorPos);
+                    if (cv.length == 2) {
+                        int chapter = Integer.parseInt(cv[0]);
+                        String verseNumStr = cv[1];
+
+                        StringBuilder sb = new StringBuilder();
+                        boolean foundLocally = false;
+
+                        if (verseNumStr.contains("-")) {
+                            // Range lookup
+                            String[] range = verseNumStr.split("-");
+                            int startV = Integer.parseInt(range[0]);
+                            int endV = Integer.parseInt(range[1]);
+                            List<Verse> verses = dao.getVersesInRange(currentTranslation, book, chapter, startV, endV);
+
+                            if (verses != null && !verses.isEmpty() && verses.size() == (endV - startV + 1)) {
+                                foundLocally = true;
+                                for (Verse v : verses) {
+                                    sb.append(v.getBook()).append(" ").append(v.getChapter()).append(":")
+                                            .append(v.getVerse()).append("\n");
+                                    sb.append("\u200B\"").append(v.getText()).append("\"\u200B\n\n");
+                                }
+                            }
+                        } else {
+                            // Single verse lookup
+                            int verseNum = Integer.parseInt(verseNumStr);
+                            Verse v = dao.getVerse(currentTranslation, book, chapter, verseNum);
+                            if (v != null) {
+                                foundLocally = true;
+                                sb.append(reference).append("\n");
+                                sb.append("\u200B\"").append(v.getText()).append("\"\u200B"); // Single verse format
+                                                                                              // matches existing logic
+                            }
+                        }
+
+                        if (foundLocally) {
+                            if (sb.length() > 2 && sb.toString().endsWith("\n\n")) {
+                                sb.setLength(sb.length() - 2);
+                            }
+                            String finalInfo = sb.toString();
+
+                            AppExecutors.getInstance().mainThread().execute(() -> {
+                                replaceTextWithVerse(startIdx, endIdx, "", finalInfo);
+                            });
+                            return; // Done
                         }
                     }
                 }
-
-                // Dynamic Dropdown Positioning
-                // Only adjust if the user types '@' (start of trigger) or tokens
-                if (editTextContent.getLayout() != null) {
-                    int pos = editTextContent.getSelectionStart();
-                    int line = editTextContent.getLayout().getLineForOffset(pos);
-                    int bottom = editTextContent.getLayout().getLineBottom(line);
-
-                    // The default behavior anchors to the bottom of the View.
-                    // We need a negative offset to bring it up to the cursor line.
-                    int height = editTextContent.getHeight();
-                    int scrollY = editTextContent.getScrollY();
-
-                    // Offset = (Cursor Line Bottom - Scroll Position) - View Height
-                    // Effectively moves the anchor point from bottom of view to the cursor line
-                    int offset = (bottom - scrollY) - height;
-
-                    editTextContent.setDropDownVerticalOffset(offset);
-                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                // Fallback to network on error
             }
+
+            // 2. Fetch from Network if not found or parsing failed
+            AppExecutors.getInstance().mainThread().execute(() -> {
+                fetchVerseNetwork(reference, startIdx, endIdx);
+            });
         });
     }
 
-    private static class BibleTokenizer
-            implements androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView.Tokenizer {
-        @Override
-        public int findTokenStart(CharSequence text, int cursor) {
-            int i = cursor;
-            while (i > 0 && text.charAt(i - 1) != '@') {
-                i--;
-            }
-            if (i > 0 && text.charAt(i - 1) == '@') {
-                return i;
-            }
-            return cursor; // No @ found, default behavior (won't trigger)
-        }
-
-        @Override
-        public int findTokenEnd(CharSequence text, int cursor) {
-            int i = cursor;
-            int len = text.length();
-            while (i < len) {
-                if (text.charAt(i) == ' ' || text.charAt(i) == '\n') {
-                    return i;
-                } else {
-                    i++;
-                }
-            }
-            return len;
-        }
-
-        @Override
-        public CharSequence terminateToken(CharSequence text) {
-            int i = text.length();
-            while (i > 0 && text.charAt(i - 1) == ' ') {
-                i--;
-            }
-            if (i > 0 && Character.isLetterOrDigit(text.charAt(i - 1))) {
-                return text + " ";
-            } else {
-                if (text instanceof android.text.Spanned) {
-                    SpannableStringBuilder sp = new SpannableStringBuilder(text);
-                    sp.append(" ");
-                    return sp;
-                } else {
-                    return text + " ";
-                }
-            }
-        }
-    }
-
-    private void checkForBibleReference(String text, int cursorPos) {
-        // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
-        // followed by whitespace
-        // Matches "@Book Chapter:Verse" followed by one or more whitespace characters
-        // at the end
-        java.util.regex.Pattern pattern = java.util.regex.Pattern
-                .compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+(?:-\\d+)?))\\s+$");
-        java.util.regex.Matcher matcher = pattern.matcher(text);
-
-        if (matcher.find()) {
-            String fullTrigger = matcher.group(1); // The whole "@Luke 1:1 "
-            String reference = matcher.group(2).trim(); // "Luke 1:1"
-
-            // Calculate start index based on match length and cursor position
-            // Since we matched against the substring ending at cursorPos, the end of match
-            // is effectively cursorPos (minus trailing whitespace potentially caught by
-            // regex but group 1 captures strict trigger part usually, let's correspond)
-            // Actually group 0 is the whole match including waiting whitespace.
-            // We want to replace group 0.
-
-            int matchEnd = cursorPos; // Because we anchored to $ of substring(0, cursorPos)
-            int matchStart = matchEnd - matcher.group(0).length();
-
-            fetchVerse(reference, matchStart, matchEnd);
-        }
-    }
-
-    private void fetchVerse(String reference, int startIdx, int endIdx) {
+    private void fetchVerseNetwork(String reference, int startIdx, int endIdx) {
         com.simplenotes.api.ApiClient.getService().getVerse(reference, currentTranslation)
                 .enqueue(new retrofit2.Callback<com.simplenotes.api.BibleResponse>() {
                     @Override
                     public void onResponse(retrofit2.Call<com.simplenotes.api.BibleResponse> call,
                             retrofit2.Response<com.simplenotes.api.BibleResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            // Check for multiple verses first
-                            if (response.body().getVerses() != null && !response.body().getVerses().isEmpty()) {
+                            com.simplenotes.api.BibleResponse body = response.body();
+
+                            // Save to Cache (Background)
+                            AppExecutors.getInstance().diskIO().execute(() -> {
+                                if (body.getVerses() != null) {
+                                    for (com.simplenotes.api.BibleResponse.Verse apiVerse : body.getVerses()) {
+                                        database.bibleDao().insertVerse(new Verse(
+                                                currentTranslation,
+                                                apiVerse.getBookName(),
+                                                apiVerse.getChapter(),
+                                                apiVerse.getVerse(),
+                                                apiVerse.getText()));
+                                    }
+                                } else if (body.getText() != null) {
+                                    // Single verse response might not give broken down details easily if API
+                                    // doesn't return list
+                                    // But Bible-api.com usually returns 'verses' array even for single.
+                                    // We'll skip caching complex partials for simplicity if list is missing
+                                }
+                            });
+
+                            // UI Update
+                            if (body.getVerses() != null && !body.getVerses().isEmpty()) {
                                 StringBuilder sb = new StringBuilder();
-                                for (com.simplenotes.api.BibleResponse.Verse v : response.body().getVerses()) {
-                                    // Format: Book Chapter:Verse, then Newline, then "Text", then Newline
+                                for (com.simplenotes.api.BibleResponse.Verse v : body.getVerses()) {
                                     String ref = v.getBookName() + " " + v.getChapter() + ":" + v.getVerse();
                                     sb.append(ref).append("\n");
-
-                                    // We need to handle the invisible markers and styling here or in
-                                    // replaceTextWithVerse
-                                    // The easiest way is to pass the raw text block to replaceTextWithVerse,
-                                    // but replaceTextWithVerse expects "reference" and "text".
-                                    // Let's modify replaceTextWithVerse to handle a pre-formatted block if needed,
-                                    // OR we can just format it all here as "text" and pass an empty reference.
-
                                     sb.append("\u200B\"").append(v.getText()).append("\"\u200B\n\n");
                                 }
-                                // Remove last newlines
-                                if (sb.length() > 2) {
+                                if (sb.length() > 2)
                                     sb.setLength(sb.length() - 2);
-                                }
-
-                                // We'll pass empty reference because we embedded references in the text.
                                 replaceTextWithVerse(startIdx, endIdx, "", sb.toString());
 
                             } else {
-                                String verseText = response.body().getText();
+                                String verseText = body.getText();
                                 if (verseText != null) {
-                                    // Standard single verse handling
                                     replaceTextWithVerse(startIdx, endIdx, reference, verseText);
                                 }
                             }
