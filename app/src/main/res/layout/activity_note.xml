@@ -54,7 +54,7 @@
             android:textStyle="bold"
             android:textColor="@color/selector_text_editor"
             android:textColorHint="#80F5F5DC"
-            android:textCursorDrawable="@null" />
+            android:textCursorDrawable="@drawable/cursor_gold" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -83,7 +83,7 @@
             android:textColorHint="#80F5F5DC"
             android:completionThreshold="1"
             android:popupBackground="@drawable/bg_autocomplete"
-            android:textCursorDrawable="@null" />
+            android:textCursorDrawable="@drawable/cursor_cream" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
