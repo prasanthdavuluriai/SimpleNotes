@@ -13,6 +13,10 @@
         <item name="colorControlActivated">@android:color/white</item>
         <!-- Set Cursor Color -->
         <item name="android:textCursorDrawable">@drawable/cursor_white</item>
+        <!-- Set Cursor Handle Color -->
+        <item name="android:textSelectHandle">@drawable/text_select_handle</item>
+        <item name="android:textSelectHandleLeft">@drawable/text_select_handle</item>
+        <item name="android:textSelectHandleRight">@drawable/text_select_handle</item>
     </style>
     
 
