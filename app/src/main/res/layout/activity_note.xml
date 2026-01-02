@@ -53,7 +53,8 @@
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/selector_text_editor"
-            android:textColorHint="#80F5F5DC" />
+            android:textColorHint="#80F5F5DC"
+            android:textCursorDrawable="@drawable/cursor_white" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -81,7 +82,8 @@
             android:textColor="@color/bible_cream"
             android:textColorHint="#80F5F5DC"
             android:completionThreshold="1"
-            android:popupBackground="@drawable/bg_autocomplete" />
+            android:popupBackground="@drawable/bg_autocomplete"
+            android:textCursorDrawable="@drawable/cursor_white" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
