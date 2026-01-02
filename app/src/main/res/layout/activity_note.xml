@@ -47,6 +47,7 @@
             android:id="@+id/editTextTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:theme="@style/WhiteCursorTheme"
             android:hint="@string/note_title"
             android:inputType="textCapSentences|textAutoCorrect"
             android:maxLines="1"
@@ -54,7 +55,7 @@
             android:textStyle="bold"
             android:textColor="@color/selector_text_editor"
             android:textColorHint="#80F5F5DC"
-            android:textCursorDrawable="@null"
+            android:textCursorDrawable="@drawable/cursor_white"
             android:textSelectHandle="@drawable/text_select_handle"
             android:textSelectHandleLeft="@drawable/text_select_handle"
             android:textSelectHandleRight="@drawable/text_select_handle" />
