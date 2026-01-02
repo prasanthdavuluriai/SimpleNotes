@@ -54,10 +54,7 @@
             android:textStyle="bold"
             android:textColor="@color/selector_text_editor"
             android:textColorHint="#80F5F5DC"
-            android:textCursorDrawable="@null"
-            android:textSelectHandle="@drawable/text_select_handle"
-            android:textSelectHandleLeft="@drawable/text_select_handle"
-            android:textSelectHandleRight="@drawable/text_select_handle" />
+            android:textCursorDrawable="@null" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -86,10 +83,7 @@
             android:textColorHint="#80F5F5DC"
             android:completionThreshold="1"
             android:popupBackground="@drawable/bg_autocomplete"
-            android:textCursorDrawable="@null"
-            android:textSelectHandle="@drawable/text_select_handle"
-            android:textSelectHandleLeft="@drawable/text_select_handle"
-            android:textSelectHandleRight="@drawable/text_select_handle" />
+            android:textCursorDrawable="@null" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
