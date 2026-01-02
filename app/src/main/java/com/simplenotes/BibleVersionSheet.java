@@ -49,14 +49,10 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
 
     private void loadVersions() {
         AppExecutors.getInstance().diskIO().execute(() -> {
+            // Always try to seed new versions if they don't exist
+            seedVersions();
+
             List<BibleVersion> list = AppDatabase.getDatabase(getContext()).bibleDao().getAllVersions();
-            // If empty, we might need to seed, but assuming main activity handles seeding
-            // for now
-            // Or better, handle it here to be safe
-            if (list.isEmpty()) {
-                seedVersions();
-                list = AppDatabase.getDatabase(getContext()).bibleDao().getAllVersions();
-            }
 
             List<BibleVersion> finalList = list;
             AppExecutors.getInstance().mainThread().execute(() -> {
@@ -67,15 +63,41 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
     }
 
     private void seedVersions() {
-        // Seed initial data
         BibleDao dao = AppDatabase.getDatabase(getContext()).bibleDao();
-        dao.insertVersion(new BibleVersion("kjv", "King James Version", false));
-        dao.insertVersion(new BibleVersion("web", "World English Bible", false));
-        dao.insertVersion(new BibleVersion("asv", "American Standard (1901)", false));
-        dao.insertVersion(new BibleVersion("bbe", "Bible in Basic English", false));
-        dao.insertVersion(new BibleVersion("cherokee", "Cherokee New Testament", false));
-        dao.insertVersion(new BibleVersion("cuv", "Chinese Union Version", false));
-        // Add more as needed based on previous map
+
+        // Helper to insert only if missing (to preserve isDownloaded state)
+        safeInsert(dao, new BibleVersion("kjv", "King James Version", false));
+        safeInsert(dao, new BibleVersion("bbe", "Bible in Basic English", false));
+
+        // New Languages
+        safeInsert(dao, new BibleVersion("ar_svd", "Arabic (SVD)", false));
+        safeInsert(dao, new BibleVersion("zh_cuv", "Chinese Union Version", false));
+        safeInsert(dao, new BibleVersion("zh_ncv", "Chinese New Version", false));
+        safeInsert(dao, new BibleVersion("eo_esperanto", "Esperanto", false));
+        safeInsert(dao, new BibleVersion("fi_finnish", "Finnish (1938)", false));
+        safeInsert(dao, new BibleVersion("fi_pr", "Finnish (Pyhä Raamattu)", false));
+        safeInsert(dao, new BibleVersion("fr_apee", "French (Bible de l'Épée)", false));
+        safeInsert(dao, new BibleVersion("de_schlachter", "German (Schlachter)", false));
+        safeInsert(dao, new BibleVersion("el_greek", "Greek (Modern)", false));
+        safeInsert(dao, new BibleVersion("ko_ko", "Korean", false));
+        safeInsert(dao, new BibleVersion("pt_aa", "Portuguese (Almeida)", false));
+        safeInsert(dao, new BibleVersion("pt_acf", "Portuguese (Corrigida Fiel)", false));
+        safeInsert(dao, new BibleVersion("pt_nvi", "Portuguese (NVI)", false));
+        safeInsert(dao, new BibleVersion("ro_cornilescu", "Romanian (Cornilescu)", false));
+        safeInsert(dao, new BibleVersion("ru_synodal", "Russian (Synodal)", false));
+        safeInsert(dao, new BibleVersion("es_rvr", "Spanish (Reina Valera)", false));
+        safeInsert(dao, new BibleVersion("vi_vietnamese", "Vietnamese", false));
+
+        // Keep existing ones if they were there
+        safeInsert(dao, new BibleVersion("web", "World English Bible", false));
+        safeInsert(dao, new BibleVersion("asv", "American Standard (1901)", false));
+        safeInsert(dao, new BibleVersion("cherokee", "Cherokee New Testament", false));
+    }
+
+    private void safeInsert(BibleDao dao, BibleVersion version) {
+        if (dao.getVersion(version.getId()) == null) {
+            dao.insertVersion(version);
+        }
     }
 
     private class VersionAdapter extends RecyclerView.Adapter<VersionAdapter.ViewHolder> {
@@ -97,12 +119,13 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
             } else {
                 holder.iconDownloaded.setVisibility(View.GONE);
 
-                // Long press to download (Only KJV supported for now)
+                // Long press to download supported versions
                 holder.itemView.setOnLongClickListener(v -> {
-                    if ("kjv".equals(version.getId())) {
+                    if (BibleDownloader.isVersionSupported(version.getId())) {
                         showDownloadOption(v, version);
                     } else {
-                        Toast.makeText(getContext(), "Download not available for this version yet", Toast.LENGTH_SHORT)
+                        Toast.makeText(getContext(), "Offline download not available for this version yet",
+                                Toast.LENGTH_SHORT)
                                 .show();
                     }
                     return true;
@@ -139,7 +162,8 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
         popup.getMenu().add("Download Offline");
         popup.setOnMenuItemClickListener(item -> {
             Toast.makeText(getContext(), "Downloading " + version.getName() + "...", Toast.LENGTH_SHORT).show();
-            BibleDownloader.downloadKJV(getContext(), new BibleDownloader.DownloadCallback() {
+
+            BibleDownloader.downloadVersion(getContext(), version.getId(), new BibleDownloader.DownloadCallback() {
                 @Override
                 public void onSuccess() {
                     Toast.makeText(getContext(), "Download Complete!", Toast.LENGTH_SHORT).show();
