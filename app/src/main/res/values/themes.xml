@@ -9,20 +9,8 @@
         <item name="colorOnSecondary">@color/bible_blue_dark</item>
         <item name="android:statusBarColor">@color/bible_blue_dark</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">@color/bible_blue_dark</item>
-        <item name="colorControlActivated">@android:color/white</item>
-        <!-- Set Cursor Color -->
-        <item name="android:textCursorDrawable">@null</item>
-        <!-- Set Cursor Handle Color -->
-        <item name="android:textSelectHandle">@drawable/text_select_handle</item>
         <item name="android:textSelectHandleLeft">@drawable/text_select_handle</item>
         <item name="android:textSelectHandleRight">@drawable/text_select_handle</item>
-    </style>
-
-    <style name="WhiteCursorTheme" parent="Theme.SimpleNotes">
-        <item name="colorControlActivated">@color/white</item>
-        <item name="android:textCursorDrawable">@drawable/cursor_white</item>
-        <item name="colorPrimary">@color/white</item>
     </style>
     
 
