@@ -41,13 +41,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
+        android:theme="@style/WhiteCursorTheme"
         app:boxBackgroundMode="outline">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/editTextTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:theme="@style/WhiteCursorTheme"
             android:hint="@string/note_title"
             android:inputType="textCapSentences|textAutoCorrect"
             android:maxLines="1"
@@ -66,6 +66,7 @@
         android:layout_weight="1"
         android:layout_marginBottom="24dp"
         android:hint="@string/note_content"
+        android:theme="@style/WhiteCursorTheme"
         app:expandedHintEnabled="false"
         app:boxBackgroundMode="outline">
 
@@ -73,7 +74,6 @@
             android:id="@+id/editTextContent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:theme="@style/WhiteCursorTheme"
             android:background="@null"
             android:padding="16dp"
             android:inputType="textMultiLine|textCapSentences"
