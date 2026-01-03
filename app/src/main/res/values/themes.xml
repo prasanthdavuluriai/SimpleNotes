@@ -10,6 +10,11 @@
         <item name="android:statusBarColor">@color/bible_blue_dark</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <style name="WhiteCursorTheme" parent="Theme.SimpleNotes">
+        <item name="colorControlActivated">@android:color/white</item>
+        <item name="android:textCursorDrawable">@drawable/cursor_thick_white</item>
+    </style>
     
 
 </resources>
