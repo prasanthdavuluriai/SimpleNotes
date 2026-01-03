@@ -127,14 +127,32 @@ public class NoteActivity extends AppCompatActivity {
             sheet.setListener(version -> {
                 currentTranslation = version.getId();
                 textViewVersion.setText("Bible Version: " + version.getName());
+
+                // Save preference
+                getSharedPreferences("bible_prefs", MODE_PRIVATE)
+                        .edit()
+                        .putString("selected_version", currentTranslation)
+                        .apply();
+
                 Toast.makeText(this, "Set to: " + version.getName(), Toast.LENGTH_SHORT).show();
             });
             sheet.show(getSupportFragmentManager(), "BibleVersionSheet");
         });
 
         // Restore default text or fetch current from DB preference if we had one
-        // For now, keep simple default
-        textViewVersion.setText("Bible Version: World English Bible");
+        // Load saved preference
+        currentTranslation = getSharedPreferences("bible_prefs", MODE_PRIVATE)
+                .getString("selected_version", "web"); // Default to web
+
+        // Find name for the ID
+        String versionName = "World English Bible"; // Default name
+        for (java.util.Map.Entry<String, String> entry : bibleVersions.entrySet()) {
+            if (entry.getValue().equals(currentTranslation)) {
+                versionName = entry.getKey();
+                break;
+            }
+        }
+        textViewVersion.setText("Bible Version: " + versionName);
     }
 
     private void setupMagicFetch() {
