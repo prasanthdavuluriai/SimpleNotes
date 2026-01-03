@@ -4,7 +4,7 @@
     <string name="add_note">Add Note</string>
     <string name="note_title">Note Title</string>
     <string name="note_content">Note Content</string>
-    <string name="magic_fetch_guide">Start typing...\nUse @Book ch:v (e.g. @John 3:16) to fetch verses</string>
+    <string name="magic_fetch_guide">Start typing...\nFor single verse use @Book ch:v (e.g. @John 3:16)\nFor multiple verses use @Book ch:v-v (e.g. @John 3:16-18)</string>
     <string name="save">Save</string>
     <string name="new_note">New Note</string>
     <string name="edit_note">Edit Note</string>
