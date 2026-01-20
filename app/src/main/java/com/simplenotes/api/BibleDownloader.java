@@ -17,10 +17,15 @@ import okhttp3.Response;
 public class BibleDownloader {
     private static final Map<String, String> VERSION_URLS = new HashMap<>();
 
+    // ... URLs ...
     static {
         // English
         VERSION_URLS.put("kjv", "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_kjv.json");
         VERSION_URLS.put("bbe", "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/en_bbe.json");
+        VERSION_URLS.put("niv",
+                "https://raw.githubusercontent.com/jadenzaleski/bible-translations/41a2e9212da9f3daf8419b3d1a06194914b711eb/NIV/NIV_bible.json");
+        VERSION_URLS.put("nlt",
+                "https://raw.githubusercontent.com/jadenzaleski/bible-translations/41a2e9212da9f3daf8419b3d1a06194914b711eb/NLT/NLT_bible.json");
 
         // Other Languages
         VERSION_URLS.put("ar_svd", "https://raw.githubusercontent.com/thiagobodruk/bible/master/json/ar_svd.json");
@@ -84,25 +89,78 @@ public class BibleDownloader {
                 }
 
                 String jsonData = response.body().string();
-
                 Gson gson = new Gson();
-                List<BookJson> books = gson.fromJson(jsonData, new TypeToken<List<BookJson>>() {
-                }.getType());
-
                 List<Verse> versesToInsert = new ArrayList<>();
 
-                for (BookJson book : books) {
-                    for (int c = 0; c < book.chapters.size(); c++) {
-                        List<String> verses = book.chapters.get(c);
-                        for (int v = 0; v < verses.size(); v++) {
-                            // c is 0-indexed index, chapter is c+1
-                            // v is 0-indexed index, verse is v+1
-                            versesToInsert.add(new Verse(
-                                    versionId,
-                                    book.name,
-                                    c + 1,
-                                    v + 1,
-                                    verses.get(v)));
+                if (versionId.equals("niv") || versionId.equals("nlt")) {
+                    // Handle Map Format (Book -> Chapter -> Verse -> Text)
+                    java.lang.reflect.Type type = new TypeToken<Map<String, Map<String, Map<String, String>>>>() {
+                    }.getType();
+                    Map<String, Map<String, Map<String, String>>> bibleMap = gson.fromJson(jsonData, type);
+
+                    // Use Canonical Order from BibleData
+                    for (String bookName : com.simplenotes.BibleData.BOOKS) {
+                        Map<String, Map<String, String>> bookData = bibleMap.get(bookName);
+                        if (bookData == null)
+                            continue; // Book not found in JSON (or name mismatch)
+
+                        // Iterate Chapters (Keys are "1", "2", etc.)
+                        List<String> chapterKeys = new ArrayList<>(bookData.keySet());
+                        // Sort chapters numerically to be safe
+                        chapterKeys.sort((a, b) -> {
+                            try {
+                                return Integer.compare(Integer.parseInt(a), Integer.parseInt(b));
+                            } catch (NumberFormatException e) {
+                                return a.compareTo(b);
+                            }
+                        });
+
+                        for (String chapterKey : chapterKeys) {
+                            Map<String, String> verseData = bookData.get(chapterKey);
+                            if (verseData == null)
+                                continue;
+
+                            List<String> verseKeys = new ArrayList<>(verseData.keySet());
+                            // Sort verses numerically
+                            verseKeys.sort((a, b) -> {
+                                try {
+                                    return Integer.compare(Integer.parseInt(a), Integer.parseInt(b));
+                                } catch (NumberFormatException e) {
+                                    return a.compareTo(b);
+                                }
+                            });
+
+                            for (String verseKey : verseKeys) {
+                                String text = verseData.get(verseKey);
+                                try {
+                                    int chapter = Integer.parseInt(chapterKey);
+                                    int verse = Integer.parseInt(verseKey);
+                                    versesToInsert.add(new Verse(versionId, bookName, chapter, verse, text));
+                                } catch (NumberFormatException e) {
+                                    // Skip malformed keys
+                                }
+                            }
+                        }
+                    }
+
+                } else {
+                    // Handle List Format (List<BookJson>) - Existing Logic
+                    List<BookJson> books = gson.fromJson(jsonData, new TypeToken<List<BookJson>>() {
+                    }.getType());
+
+                    for (BookJson book : books) {
+                        for (int c = 0; c < book.chapters.size(); c++) {
+                            List<String> verses = book.chapters.get(c);
+                            for (int v = 0; v < verses.size(); v++) {
+                                // c is 0-indexed index, chapter is c+1
+                                // v is 0-indexed index, verse is v+1
+                                versesToInsert.add(new Verse(
+                                        versionId,
+                                        book.name,
+                                        c + 1,
+                                        v + 1,
+                                        verses.get(v)));
+                            }
                         }
                     }
                 }

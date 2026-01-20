@@ -68,6 +68,8 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
         // Helper to insert only if missing (to preserve isDownloaded state)
         safeInsert(dao, new BibleVersion("kjv", "King James Version", false));
         safeInsert(dao, new BibleVersion("bbe", "Bible in Basic English", false));
+        safeInsert(dao, new BibleVersion("niv", "New International Version", false));
+        safeInsert(dao, new BibleVersion("nlt", "New Living Translation", false));
 
         // New Languages
         safeInsert(dao, new BibleVersion("ar_svd", "Arabic (SVD)", false));
@@ -133,9 +135,14 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
             }
 
             holder.itemView.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onVersionSelected(version);
-                    dismiss();
+                // Smart Selection for Offline-Only Versions (NIV/NLT)
+                if (!version.isDownloaded() && (version.getId().equals("niv") || version.getId().equals("nlt"))) {
+                    showSmartDownloadDialog(version);
+                } else {
+                    if (listener != null) {
+                        listener.onVersionSelected(version);
+                        dismiss();
+                    }
                 }
             });
         }
@@ -161,22 +168,46 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
         PopupMenu popup = new PopupMenu(getContext(), anchor);
         popup.getMenu().add("Download Offline");
         popup.setOnMenuItemClickListener(item -> {
-            Toast.makeText(getContext(), "Downloading " + version.getName() + "...", Toast.LENGTH_SHORT).show();
-
-            BibleDownloader.downloadVersion(getContext(), version.getId(), new BibleDownloader.DownloadCallback() {
-                @Override
-                public void onSuccess() {
-                    Toast.makeText(getContext(), "Download Complete!", Toast.LENGTH_SHORT).show();
-                    loadVersions(); // Refresh list to show checkmark
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    Toast.makeText(getContext(), "Download Failed: " + error, Toast.LENGTH_LONG).show();
-                }
-            });
+            performDownload(version, false);
             return true;
         });
         popup.show();
+    }
+
+    private void showSmartDownloadDialog(BibleVersion version) {
+        new androidx.appcompat.app.AlertDialog.Builder(getContext())
+                .setTitle("Download Required")
+                .setMessage(
+                        "Online fetch is unavailable for " + version.getName() + ". Download now for offline access?")
+                .setPositiveButton("Download", (dialog, which) -> {
+                    performDownload(version, true);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void performDownload(BibleVersion version, boolean autoSelect) {
+        Toast.makeText(getContext(), "Downloading " + version.getName() + "...", Toast.LENGTH_SHORT).show();
+
+        BibleDownloader.downloadVersion(getContext(), version.getId(), new BibleDownloader.DownloadCallback() {
+            @Override
+            public void onSuccess() {
+                Toast.makeText(getContext(), "Download Complete!", Toast.LENGTH_SHORT).show();
+                loadVersions(); // Refresh list to update icons
+
+                if (autoSelect) {
+                    // Auto-select the version
+                    if (listener != null) {
+                        listener.onVersionSelected(version);
+                        dismiss();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(String error) {
+                Toast.makeText(getContext(), "Download Failed: " + error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }
