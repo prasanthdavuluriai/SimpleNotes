@@ -3,6 +3,9 @@ package com.simplenotes;
 import android.content.Intent;
 import android.os.Bundle;
 
+import android.view.MenuItem;
+import android.view.ViewGroup;
+import android.view.View;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import java.util.List;
@@ -29,6 +32,10 @@ public class NoteActivity extends AppCompatActivity {
     private String currentTranslation = "web"; // Default
     private java.util.Map<String, String> bibleVersions;
 
+    // Highlighting
+    private int[] highlightColors;
+    private String[] highlightColorNames;
+
     private Note currentNote;
     private boolean isNewNote = true;
 
@@ -42,6 +49,9 @@ public class NoteActivity extends AppCompatActivity {
         database = AppDatabase.getDatabase(this);
 
         initViews();
+        initializeHighlightColors(); // Initialize colors
+        setupSelectionMenu(); // Custom Selection Menu
+
         if (savedInstanceState != null && savedInstanceState.containsKey("current_note")) {
             currentNote = (Note) savedInstanceState.getSerializable("current_note");
             isNewNote = false; // Restored state means it's not a fresh "new" note
@@ -466,26 +476,174 @@ public class NoteActivity extends AppCompatActivity {
         applyVerseStyling();
     }
 
-    private void applyVerseStyling() {
+    private void initializeHighlightColors() {
+        highlightColors = new int[] {
+                ContextCompat.getColor(this, R.color.highlight_gold),
+                ContextCompat.getColor(this, R.color.highlight_blue),
+                ContextCompat.getColor(this, R.color.highlight_green),
+                ContextCompat.getColor(this, R.color.highlight_pink),
+                ContextCompat.getColor(this, R.color.highlight_purple),
+                ContextCompat.getColor(this, R.color.highlight_peach)
+        };
+        highlightColorNames = new String[] { "Gold", "Blue", "Green", "Pink", "Purple", "Peach" };
+    }
+
+    private void setupSelectionMenu() {
+        editTextContent.setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
+            @Override
+            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                // Add "Highlight" option
+                menu.add(0, 101, 0, "Highlight")
+                        .setIcon(R.drawable.ic_launcher_foreground) // Placeholder icon if needed
+                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                return false;
+            }
+
+            @Override
+            public boolean onActionItemClicked(android.view.ActionMode mode, MenuItem item) {
+                if (item.getItemId() == 101) {
+                    showHighlightColorPicker(mode);
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(android.view.ActionMode mode) {
+            }
+        });
+    }
+
+    private void showHighlightColorPicker(android.view.ActionMode mode) {
+        int start = editTextContent.getSelectionStart();
+        int end = editTextContent.getSelectionEnd();
+
+        if (start == end)
+            return; // No selection
+
+        // Check if already highlighted (simple check)
+        String selectedText = editTextContent.getText().subSequence(start, end).toString();
+
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("Choose Highlight Color");
+
+        // Simple list adapter for colors
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
+                android.R.layout.select_dialog_item, highlightColorNames) {
+            @NonNull
+            @Override
+            public View getView(int position, @androidx.annotation.Nullable View convertView,
+                    @NonNull ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                android.widget.TextView tv = (android.widget.TextView) v;
+                tv.setTextColor(highlightColors[position]);
+                tv.setTypeface(null, Typeface.BOLD);
+                return v;
+            }
+        };
+
+        builder.setAdapter(adapter, (dialog, which) -> {
+            applyHighlight(which, start, end);
+            mode.finish(); // Close selection menu
+        });
+
+        builder.setNegativeButton("Remove Highlight", (dialog, which) -> {
+            removeHighlight(start, end);
+            mode.finish();
+        });
+
+        builder.show();
+    }
+
+    private void applyHighlight(int colorIndex, int start, int end) {
+        if (start < 0 || end < 0 || start >= end)
+            return;
+
+        android.text.Editable text = editTextContent.getText();
+        String selected = text.subSequence(start, end).toString();
+
+        // Format: \u200C{index}content\u200C
+        // Remove existing markers inside selection to avoid nesting
+        selected = selected.replace("\u200C", "");
+        // Also remove specific index markers if present (simple cleanup)
+        selected = selected.replaceAll("\\{\\d+\\}", "");
+
+        String newText = "\u200C{" + colorIndex + "}" + selected + "\u200C";
+
+        text.replace(start, end, newText);
+        applyStyling(); // Re-apply all styles
+    }
+
+    private void removeHighlight(int start, int end) {
+        // Logic to strip markers is complex with selection,
+        // simpler approach: get expanded string, Strip markers
+        // For now, let applyHighlight handle re-wrapping which effectively updates it.
+        // To strictly remove:
+        android.text.Editable text = editTextContent.getText();
+        String selected = text.subSequence(start, end).toString();
+        selected = selected.replace("\u200C", "").replaceAll("\\{\\d+\\}", "");
+        text.replace(start, end, selected);
+        applyStyling();
+    }
+
+    private void applyStyling() {
         android.text.Editable text = editTextContent.getText();
         String content = text.toString();
 
-        // Regex to find content wrapped in invisible markers: \u200B"..."\u200B
-        // DOTALL mode required to match verses spanning multiple lines
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
+        // 1. Clear existing spans to avoid duplicates
+        ForegroundColorSpan[] fgSpans = text.getSpans(0, text.length(), ForegroundColorSpan.class);
+        for (ForegroundColorSpan span : fgSpans)
+            text.removeSpan(span);
+
+        RoundedBackgroundSpan[] bgSpans = text.getSpans(0, text.length(), RoundedBackgroundSpan.class);
+        for (RoundedBackgroundSpan span : bgSpans)
+            text.removeSpan(span);
+
+        // 2. Bible Verse Styling: \u200B...\u200B
+        java.util.regex.Pattern versePattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
                 java.util.regex.Pattern.DOTALL);
-        java.util.regex.Matcher matcher = pattern.matcher(content);
+        java.util.regex.Matcher verseMatcher = versePattern.matcher(content);
 
-        int textColor = ContextCompat.getColor(this, R.color.bible_gold);
+        int goldColor = ContextCompat.getColor(this, R.color.bible_gold);
 
-        while (matcher.find()) {
-            int start = matcher.start();
-            int end = matcher.end();
-
-            // Apply Bold and Gold
-            text.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            text.setSpan(new ForegroundColorSpan(textColor), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        while (verseMatcher.find()) {
+            text.setSpan(new ForegroundColorSpan(goldColor),
+                    verseMatcher.start(),
+                    verseMatcher.end(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
+
+        // 3. Highlight Styling: \u200C{index}...\u200C
+        java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200C",
+                java.util.regex.Pattern.DOTALL);
+        java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
+
+        int textColor = ContextCompat.getColor(this, R.color.bible_blue_dark); // Default text color
+
+        while (highlightMatcher.find()) {
+            try {
+                int colorIndex = Integer.parseInt(highlightMatcher.group(1));
+                if (colorIndex >= 0 && colorIndex < highlightColors.length) {
+                    int bgColor = highlightColors[colorIndex];
+
+                    text.setSpan(new RoundedBackgroundSpan(bgColor, textColor, 12f, 8f),
+                            highlightMatcher.start(),
+                            highlightMatcher.end(),
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            } catch (Exception e) {
+                // Ignore malformed
+            }
+        }
+    }
+
+    private void applyVerseStyling() {
+        applyStyling();
     }
 
     @Override

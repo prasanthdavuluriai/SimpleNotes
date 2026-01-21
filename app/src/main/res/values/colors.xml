@@ -8,5 +8,10 @@
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     <!-- Accent for highlights -->
-    <color name="highlight_gold">#40D4AF37</color> 
+    <color name="highlight_gold">#FCE38A</color>
+    <color name="highlight_blue">#95E1D3</color>
+    <color name="highlight_green">#EAFFD0</color>
+    <color name="highlight_pink">#FFC6C6</color>
+    <color name="highlight_purple">#E1BEE7</color>
+    <color name="highlight_peach">#FFE0B2</color> 
 </resources>
