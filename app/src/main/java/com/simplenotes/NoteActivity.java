@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import java.util.List;
 import android.text.style.StyleSpan;
 import android.graphics.Typeface;
