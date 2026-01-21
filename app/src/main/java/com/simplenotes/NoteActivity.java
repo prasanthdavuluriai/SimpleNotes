@@ -41,7 +41,12 @@ public class NoteActivity extends AppCompatActivity {
         database = AppDatabase.getDatabase(this);
 
         initViews();
-        checkIntentData();
+        if (savedInstanceState != null && savedInstanceState.containsKey("current_note")) {
+            currentNote = (Note) savedInstanceState.getSerializable("current_note");
+            isNewNote = false; // Restored state means it's not a fresh "new" note
+        } else {
+            checkIntentData();
+        }
 
         initializeBibleVersions();
         setupVersionSwitcher();
@@ -483,6 +488,17 @@ public class NoteActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         saveNote();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (currentNote != null) {
+            // Ensure object is up-to-date with UI before saving
+            currentNote.setTitle(editTextTitle.getText().toString().trim());
+            currentNote.setContent(editTextContent.getText().toString().trim());
+            outState.putSerializable("current_note", currentNote);
+        }
     }
 
     private void saveNote() {
