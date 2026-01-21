@@ -494,7 +494,6 @@ public class NoteActivity extends AppCompatActivity {
             public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
                 // Add "Highlight" option
                 menu.add(0, 101, 0, "Highlight")
-                        .setIcon(R.drawable.ic_launcher_foreground) // Placeholder icon if needed
                         .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
                 return true;
             }
