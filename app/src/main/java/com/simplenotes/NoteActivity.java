@@ -116,7 +116,10 @@ public class NoteActivity extends AppCompatActivity {
         bibleVersions.put("Bible in Basic English", "bbe");
         bibleVersions.put("Darby Bible", "darby");
         bibleVersions.put("Douay-Rheims 1899", "dra");
+        bibleVersions.put("Douay-Rheims 1899", "dra");
         bibleVersions.put("King James Version", "kjv");
+        bibleVersions.put("New International Version", "niv");
+        bibleVersions.put("New Living Translation", "nlt");
         bibleVersions.put("World English Bible", "web");
         bibleVersions.put("Young's Literal (NT)", "ylt");
         bibleVersions.put("Open English (Commonwealth)", "oeb-cw");
