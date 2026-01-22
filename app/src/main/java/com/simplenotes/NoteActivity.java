@@ -20,6 +20,13 @@ import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import android.text.Html;
+import android.text.style.UnderlineSpan;
+import android.text.Spanned;
+import android.widget.ImageButton;
+import android.widget.HorizontalScrollView;
+import android.app.AlertDialog;
+import android.graphics.Color;
 
 public class NoteActivity extends AppCompatActivity {
     private TextInputEditText editTextTitle;
@@ -42,6 +49,9 @@ public class NoteActivity extends AppCompatActivity {
     private boolean isNewNote = true;
 
     private AppDatabase database;
+
+    // Rich Text Toolbar
+    private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +101,15 @@ public class NoteActivity extends AppCompatActivity {
 
         textViewVersion = findViewById(R.id.textViewVersion);
         buttonVersion = findViewById(R.id.buttonVersion);
+
+        // Rich Text Toolbar
+        btnBold = findViewById(R.id.btnBold);
+        btnItalic = findViewById(R.id.btnItalic);
+        btnUnderline = findViewById(R.id.btnUnderline);
+        btnTextColor = findViewById(R.id.btnTextColor);
+        btnBackendColor = findViewById(R.id.btnBackendColor);
+
+        setupFormattingButtons();
     }
 
     private void checkIntentData() {
@@ -103,7 +122,15 @@ public class NoteActivity extends AppCompatActivity {
                 currentNote = (Note) intent.getSerializableExtra("note");
                 if (currentNote != null) {
                     editTextTitle.setText(currentNote.getTitle());
-                    editTextContent.setText(currentNote.getContent());
+                    // Load Rich Text from HTML
+                    String content = currentNote.getContent();
+                    if (content != null) {
+                        if (content.contains("<") && content.contains(">")) {
+                            editTextContent.setText(Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY));
+                        } else {
+                            editTextContent.setText(content);
+                        }
+                    }
                     applyVerseStyling();
                     setTitle(R.string.edit_note);
                 }
@@ -550,14 +577,153 @@ public class NoteActivity extends AppCompatActivity {
 
         builder.setAdapter(adapter, (dialog, which) -> {
             applyHighlight(which, start, end);
-            mode.finish(); // Close selection menu
+            if (mode != null)
+                mode.finish(); // Close selection menu if exists
         });
 
         builder.setNegativeButton("Remove Highlight", (dialog, which) -> {
             removeHighlight(start, end);
-            mode.finish();
+            if (mode != null)
+                mode.finish();
         });
 
+        builder.show();
+    }
+
+    // Setup Formatting Listeners
+    private void setupFormattingButtons() {
+        btnBold.setOnClickListener(v -> toggleStyle(Typeface.BOLD));
+        btnItalic.setOnClickListener(v -> toggleStyle(Typeface.ITALIC));
+        btnUnderline.setOnClickListener(v -> toggleUnderline());
+        btnTextColor.setOnClickListener(v -> showTextColorPicker());
+        btnBackendColor.setOnClickListener(v -> {
+            // Trigger the same highlight color picker logic
+            // Use current selection
+            int start = editTextContent.getSelectionStart();
+            int end = editTextContent.getSelectionEnd();
+            if (start == end) { // If no selection, select word
+                selectCurrentWord();
+                start = editTextContent.getSelectionStart();
+                end = editTextContent.getSelectionEnd();
+            }
+            if (start != end) {
+                // Pseudo-action mode not needed using mode=null logic
+                showHighlightColorPicker(null);
+            } else {
+                Toast.makeText(this, "Select text to highlight", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void selectCurrentWord() {
+        int cursor = editTextContent.getSelectionStart();
+        if (cursor < 0)
+            return;
+        String text = editTextContent.getText().toString();
+        if (text.isEmpty())
+            return;
+
+        int start = cursor;
+        int end = cursor;
+
+        while (start > 0 && start <= text.length() && Character.isLetterOrDigit(text.charAt(start - 1)))
+            start--;
+        while (end < text.length() && Character.isLetterOrDigit(text.charAt(end)))
+            end++;
+
+        if (start < end) {
+            editTextContent.setSelection(start, end);
+        }
+    }
+
+    private void toggleStyle(int style) {
+        int start = editTextContent.getSelectionStart();
+        int end = editTextContent.getSelectionEnd();
+        if (start == end)
+            return;
+
+        Spannable str = editTextContent.getText();
+        StyleSpan[] spans = str.getSpans(start, end, StyleSpan.class);
+        boolean exists = false;
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == style) {
+                if (str.getSpanStart(span) < start || str.getSpanEnd(span) > end) {
+                    // Span extends outside selection
+                }
+                exists = true;
+                str.removeSpan(span);
+            }
+        }
+
+        if (!exists) {
+            str.setSpan(new StyleSpan(style), start, end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+        }
+    }
+
+    private void toggleUnderline() {
+        int start = editTextContent.getSelectionStart();
+        int end = editTextContent.getSelectionEnd();
+        if (start == end)
+            return;
+
+        Spannable str = editTextContent.getText();
+        UnderlineSpan[] spans = str.getSpans(start, end, UnderlineSpan.class);
+        boolean exists = false;
+        for (UnderlineSpan span : spans) {
+            exists = true;
+            str.removeSpan(span);
+        }
+
+        if (!exists) {
+            str.setSpan(new UnderlineSpan(), start, end, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+        }
+    }
+
+    private void showTextColorPicker() {
+        int start = editTextContent.getSelectionStart();
+        int end = editTextContent.getSelectionEnd();
+        if (start == end)
+            return;
+
+        final int[] textColors = new int[] {
+                ContextCompat.getColor(this, R.color.text_black),
+                ContextCompat.getColor(this, R.color.text_grey),
+                ContextCompat.getColor(this, R.color.text_red),
+                ContextCompat.getColor(this, R.color.text_orange),
+                ContextCompat.getColor(this, R.color.text_yellow),
+                ContextCompat.getColor(this, R.color.text_green),
+                ContextCompat.getColor(this, R.color.text_teal),
+                ContextCompat.getColor(this, R.color.text_blue),
+                ContextCompat.getColor(this, R.color.text_indigo),
+                ContextCompat.getColor(this, R.color.text_purple),
+                ContextCompat.getColor(this, R.color.text_pink),
+                ContextCompat.getColor(this, R.color.text_brown)
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Text Color");
+
+        String[] names = { "Black", "Grey", "Red", "Orange", "Yellow", "Green", "Teal", "Blue", "Indigo", "Purple",
+                "Pink", "Brown" };
+
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
+                android.R.layout.select_dialog_item, names) {
+            @NonNull
+            @Override
+            public View getView(int position, @androidx.annotation.Nullable View convertView,
+                    @NonNull ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                android.widget.TextView tv = (android.widget.TextView) v;
+                tv.setTextColor(textColors[position]);
+                tv.setTypeface(null, Typeface.BOLD);
+                return v;
+            }
+        };
+
+        builder.setAdapter(adapter, (dialog, which) -> {
+            editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[which]), start, end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        });
         builder.show();
     }
 
@@ -643,7 +809,6 @@ public class NoteActivity extends AppCompatActivity {
         String content = text.toString();
 
         // 0. AUTO-MIGRATION: Fix Legacy Closers
-        // Replace any \u200C that is NOT followed by '{' with \u200D
         java.util.regex.Matcher migrationMatcher = java.util.regex.Pattern.compile("\u200C(?![{])").matcher(content);
         if (migrationMatcher.find()) {
             String cleanContent = migrationMatcher.replaceAll("\u200D");
@@ -653,30 +818,18 @@ public class NoteActivity extends AppCompatActivity {
 
                 editTextContent.setText(cleanContent);
                 try {
-                    // Check bounds to prevents crashes if text length changed (unlikely here but
-                    // safe)
                     int len = editTextContent.length();
                     editTextContent.setSelection(Math.min(selectionStart, len), Math.min(selectionEnd, len));
                 } catch (Exception e) {
                 }
-
-                // Recurse to apply styles to clean text
                 applyStyling();
                 return;
             }
         }
 
-        // 1. Clear existing spans
-        ForegroundColorSpan[] fgSpans = text.getSpans(0, text.length(), ForegroundColorSpan.class);
-        for (ForegroundColorSpan span : fgSpans)
-            text.removeSpan(span);
-
-        RoundedBackgroundSpan[] bgSpans = text.getSpans(0, text.length(), RoundedBackgroundSpan.class);
-        for (RoundedBackgroundSpan span : bgSpans)
-            text.removeSpan(span);
-
-        BackgroundColorSpan[] colorSpans = text.getSpans(0, text.length(), BackgroundColorSpan.class);
-        for (BackgroundColorSpan span : colorSpans)
+        // 1. Clear ONLY Auto Spans (Leave user's Bold/Italic/Color intact)
+        AutoColorSpan[] autoSpans = text.getSpans(0, text.length(), AutoColorSpan.class);
+        for (AutoColorSpan span : autoSpans)
             text.removeSpan(span);
 
         RoundedHighlighterSpan[] roundedSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
@@ -688,11 +841,8 @@ public class NoteActivity extends AppCompatActivity {
             text.removeSpan(span);
 
         // 2. Hide ALL Markers Globally (Robustness)
-        // Matches \u200C{digits} OR \u200D OR just \u200C (orphaned)
         java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("(\u200C(\\{\\d+\\})?)|\u200D");
         java.util.regex.Matcher markerMatcher = markerPattern.matcher(content);
-
-        int transparent = android.graphics.Color.TRANSPARENT;
 
         while (markerMatcher.find()) {
             text.setSpan(new HiddenSpan(), markerMatcher.start(), markerMatcher.end(),
@@ -711,11 +861,12 @@ public class NoteActivity extends AppCompatActivity {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setSpan(new HiddenSpan(), verseMatcher.end(1), verseMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            text.setSpan(new ForegroundColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
+            // Use AutoColorSpan to distinguish from user colors
+            text.setSpan(new AutoColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        // 4. Highlight Coloring: \u200C{index} ... \u200D
+        // 4. Highlight Coloring
         java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200D",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
@@ -735,14 +886,14 @@ public class NoteActivity extends AppCompatActivity {
                 if (colorIndex >= 0 && colorIndex < highlightColors.length) {
                     int bgColor = highlightColors[colorIndex];
 
-                    // Apply Rounded Highlighter (Widget Look)
+                    // Apply Rounded Highlighter
                     text.setSpan(new RoundedHighlighterSpan(bgColor, 12f),
-                            highlightMatcher.start(2), // Content Start
-                            highlightMatcher.end(2), // Content End
+                            highlightMatcher.start(2),
+                            highlightMatcher.end(2),
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                    // Force text color black
-                    text.setSpan(new ForegroundColorSpan(textColor),
+                    // Force text color black using AutoColorSpan
+                    text.setSpan(new AutoColorSpan(textColor),
                             highlightMatcher.start(2),
                             highlightMatcher.end(2),
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -768,7 +919,8 @@ public class NoteActivity extends AppCompatActivity {
         if (currentNote != null) {
             // Ensure object is up-to-date with UI before saving
             currentNote.setTitle(editTextTitle.getText().toString().trim());
-            currentNote.setContent(editTextContent.getText().toString().trim());
+            // Save as HTML to persist Rich Text
+            currentNote.setContent(Html.toHtml(editTextContent.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE));
             outState.putSerializable("current_note", currentNote);
         }
     }
@@ -778,7 +930,8 @@ public class NoteActivity extends AppCompatActivity {
             return;
 
         String title = editTextTitle.getText().toString().trim();
-        String content = editTextContent.getText().toString().trim();
+        // Save as HTML to persist Rich Text
+        String content = Html.toHtml(editTextContent.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
 
         // Update note data in memory
         currentNote.setTitle(title);

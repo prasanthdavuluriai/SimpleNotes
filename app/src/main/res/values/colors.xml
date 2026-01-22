@@ -13,5 +13,20 @@
     <color name="highlight_green">#EAFFD0</color>
     <color name="highlight_pink">#FFC6C6</color>
     <color name="highlight_purple">#E1BEE7</color>
-    <color name="highlight_peach">#FFE0B2</color> 
+    <color name="highlight_peach">#FFE0B2</color>
+    <color name="highlight_peach">#FFE0B2</color>
+
+    <!-- Text Colors -->
+    <color name="text_black">#000000</color>
+    <color name="text_grey">#757575</color>
+    <color name="text_red">#F44336</color>
+    <color name="text_orange">#FF9800</color>
+    <color name="text_yellow">#FBC02D</color>
+    <color name="text_green">#4CAF50</color>
+    <color name="text_teal">#009688</color>
+    <color name="text_blue">#2196F3</color>
+    <color name="text_indigo">#3F51B5</color>
+    <color name="text_purple">#9C27B0</color>
+    <color name="text_pink">#E91E63</color>
+    <color name="text_brown">#795548</color>
 </resources>
