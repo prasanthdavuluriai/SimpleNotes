@@ -3,7 +3,14 @@
     android:height="48dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- Ring -->
     <path
-        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z M12,20c-4.41,0 -8,-3.59 -8,-8 0,-1.84 0.62,-3.54 1.69,-4.9L16.9,18.31C15.54,19.38 13.84,20 12,20z M18.31,16.9 L5.69,4.28C7.05,3.22 8.75,2.6 12,2.6c4.41,0 8,3.59 8,8 0,1.84 -0.62,3.54 -1.69,4.9z"
-        android:fillColor="#757575" />
+        android:strokeWidth="2"
+        android:strokeColor="#9E9E9E"
+        android:pathData="M12,21a9,9 0 1,0 0,-18 9,9 0 0,0 0,18z" />
+    <!-- Slash -->
+    <path
+        android:strokeWidth="2"
+        android:strokeColor="#9E9E9E"
+        android:pathData="M5.64,5.64l12.72,12.72" />
 </vector>
