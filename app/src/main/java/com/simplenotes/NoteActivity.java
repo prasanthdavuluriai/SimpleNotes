@@ -567,11 +567,8 @@ public class NoteActivity extends AppCompatActivity {
         // Smart Expansion: Check if selection touches existing markers and expand to
         // include them
         // Check Start: Look for \u200C{d} (max 4-5 chars back)
-        // \u200C is 1, { is 1, d is 1+, } is 1. Min 4 chars.
         if (start >= 4) {
-            // Check for } at start-1
             if (text.charAt(start - 1) == '}') {
-                // Scan back for \u200C
                 for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
                     if (text.charAt(start - i) == '\u200C') {
                         start = start - i;
@@ -581,9 +578,10 @@ public class NoteActivity extends AppCompatActivity {
             }
         }
 
-        // Check End: Look for \u200C
+        // Check End: Look for \u200D (NEW) or \u200C (LEGACY)
         if (end < text.length()) {
-            if (text.charAt(end) == '\u200C') {
+            char nextChar = text.charAt(end);
+            if (nextChar == '\u200D' || nextChar == '\u200C') {
                 end = end + 1;
             }
         }
@@ -593,21 +591,20 @@ public class NoteActivity extends AppCompatActivity {
 
         String selected = text.subSequence(start, end).toString();
 
-        // Format: \u200C{index}content\u200C
         // Remove existing markers inside selection to avoid nesting
-        selected = selected.replace("\u200C", "");
-        // Also remove specific index markers if present (simple cleanup)
+        selected = selected.replace("\u200C", "").replace("\u200D", "");
         selected = selected.replaceAll("\\{\\d+\\}", "");
 
-        String newText = "\u200C{" + colorIndex + "}" + selected + "\u200C";
+        // Use \u200D as Distinct Closer
+        String newText = "\u200C{" + colorIndex + "}" + selected + "\u200D";
 
         text.replace(start, end, newText);
-        applyStyling(); // Re-apply all styles
+        applyStyling();
     }
 
     private void removeHighlight(int start, int end) {
-        // Same smart expansion for removal
         android.text.Editable text = editTextContent.getText();
+        // Smart Expansion logic (mirrored)
         if (start >= 4 && text.charAt(start - 1) == '}') {
             for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
                 if (text.charAt(start - i) == '\u200C') {
@@ -616,12 +613,14 @@ public class NoteActivity extends AppCompatActivity {
                 }
             }
         }
-        if (end < text.length() && text.charAt(end) == '\u200C') {
-            end = end + 1;
+        if (end < text.length()) {
+            char nextChar = text.charAt(end);
+            if (nextChar == '\u200D' || nextChar == '\u200C')
+                end = end + 1;
         }
 
         String selected = text.subSequence(start, end).toString();
-        selected = selected.replace("\u200C", "").replaceAll("\\{\\d+\\}", "");
+        selected = selected.replace("\u200C", "").replace("\u200D", "").replaceAll("\\{\\d+\\}", "");
         text.replace(start, end, selected);
         applyStyling();
     }
@@ -629,6 +628,30 @@ public class NoteActivity extends AppCompatActivity {
     private void applyStyling() {
         android.text.Editable text = editTextContent.getText();
         String content = text.toString();
+
+        // 0. AUTO-MIGRATION: Fix Legacy Closers
+        // Replace any \u200C that is NOT followed by '{' with \u200D
+        java.util.regex.Matcher migrationMatcher = java.util.regex.Pattern.compile("\u200C(?![{])").matcher(content);
+        if (migrationMatcher.find()) {
+            String cleanContent = migrationMatcher.replaceAll("\u200D");
+            if (!cleanContent.equals(content)) {
+                int selectionStart = editTextContent.getSelectionStart();
+                int selectionEnd = editTextContent.getSelectionEnd();
+
+                editTextContent.setText(cleanContent);
+                try {
+                    // Check bounds to prevents crashes if text length changed (unlikely here but
+                    // safe)
+                    int len = editTextContent.length();
+                    editTextContent.setSelection(Math.min(selectionStart, len), Math.min(selectionEnd, len));
+                } catch (Exception e) {
+                }
+
+                // Recurse to apply styles to clean text
+                applyStyling();
+                return;
+            }
+        }
 
         // 1. Clear existing spans
         ForegroundColorSpan[] fgSpans = text.getSpans(0, text.length(), ForegroundColorSpan.class);
@@ -639,50 +662,54 @@ public class NoteActivity extends AppCompatActivity {
         for (RoundedBackgroundSpan span : bgSpans)
             text.removeSpan(span);
 
-        RoundedHighlighterSpan[] colorSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
-        for (RoundedHighlighterSpan span : colorSpans)
+        BackgroundColorSpan[] colorSpans = text.getSpans(0, text.length(), BackgroundColorSpan.class);
+        for (BackgroundColorSpan span : colorSpans)
+            text.removeSpan(span);
+
+        RoundedHighlighterSpan[] roundedSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
+        for (RoundedHighlighterSpan span : roundedSpans)
             text.removeSpan(span);
 
         ScaleXSpan[] scaleSpans = text.getSpans(0, text.length(), ScaleXSpan.class);
         for (ScaleXSpan span : scaleSpans)
             text.removeSpan(span);
 
-        // 2. Hide ALL Highlight Markers Globally First (Robustness)
-        // Matches \u200C followed optionally by {digits}
-        java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("\u200C(\\{\\d+\\})?");
+        // 2. Hide ALL Markers Globally (Robustness)
+        // Matches \u200C{digits} OR \u200D
+        java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("(\u200C\\{\\d+\\})|\u200D");
         java.util.regex.Matcher markerMatcher = markerPattern.matcher(content);
+
+        int transparent = android.graphics.Color.TRANSPARENT;
+
         while (markerMatcher.find()) {
             text.setSpan(new ScaleXSpan(0f), markerMatcher.start(), markerMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            // Backup: Apply Transparent Color
+            text.setSpan(new ForegroundColorSpan(transparent), markerMatcher.start(), markerMatcher.end(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        // 3. Bible Verse Styling: \u200B...\u200B
+        // 3. Bible Verse Styling
         java.util.regex.Pattern versePattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher verseMatcher = versePattern.matcher(content);
-
         int goldColor = ContextCompat.getColor(this, R.color.bible_gold);
 
         while (verseMatcher.find()) {
-            // Hide the \u200B markers
             text.setSpan(new ScaleXSpan(0f), verseMatcher.start(), verseMatcher.start(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setSpan(new ScaleXSpan(0f), verseMatcher.end(1), verseMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            // Color the content
-            text.setSpan(new ForegroundColorSpan(goldColor),
-                    verseMatcher.start(1),
-                    verseMatcher.end(1),
+            text.setSpan(new ForegroundColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        // 4. Highlight Coloring
-        java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200C",
+        // 4. Highlight Coloring: \u200C{index} ... \u200D
+        java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200D",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
 
-        int textColor = ContextCompat.getColor(this, R.color.black); // Force text color black
+        int textColor = ContextCompat.getColor(this, R.color.black);
 
         while (highlightMatcher.find()) {
             try {
@@ -693,8 +720,8 @@ public class NoteActivity extends AppCompatActivity {
 
                     // Apply Rounded Highlighter (Widget Look)
                     text.setSpan(new RoundedHighlighterSpan(bgColor, 12f),
-                            highlightMatcher.start(2), // Start of content
-                            highlightMatcher.end(2), // End of content
+                            highlightMatcher.start(2), // Content Start
+                            highlightMatcher.end(2), // Content End
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                     // Force text color black
@@ -704,7 +731,6 @@ public class NoteActivity extends AppCompatActivity {
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (Exception e) {
-                // Ignore malformed
             }
         }
     }
