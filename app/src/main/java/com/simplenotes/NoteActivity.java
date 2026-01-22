@@ -851,51 +851,29 @@ public class NoteActivity extends AppCompatActivity {
         int start = editTextContent.getSelectionStart();
         int end = editTextContent.getSelectionEnd();
 
-        final int[] textColors = new int[] {
-                ContextCompat.getColor(this, R.color.text_black),
-                ContextCompat.getColor(this, R.color.text_grey),
-                ContextCompat.getColor(this, R.color.text_red),
-                ContextCompat.getColor(this, R.color.text_orange),
-                ContextCompat.getColor(this, R.color.text_yellow),
-                ContextCompat.getColor(this, R.color.text_green),
-                ContextCompat.getColor(this, R.color.text_teal),
-                ContextCompat.getColor(this, R.color.text_blue),
-                ContextCompat.getColor(this, R.color.text_indigo),
-                ContextCompat.getColor(this, R.color.text_purple),
-                ContextCompat.getColor(this, R.color.text_pink),
-                ContextCompat.getColor(this, R.color.text_brown)
-        };
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Text Color");
-
-        String[] names = { "Black", "Grey", "Red", "Orange", "Yellow", "Green", "Teal", "Blue", "Indigo", "Purple",
-                "Pink", "Brown" };
-
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
-                android.R.layout.select_dialog_item, names) {
-            @NonNull
-            @Override
-            public View getView(int position, @androidx.annotation.Nullable View convertView,
-                    @NonNull ViewGroup parent) {
-                View v = super.getView(position, convertView, parent);
-                android.widget.TextView tv = (android.widget.TextView) v;
-                tv.setTextColor(textColors[position]);
-                tv.setTypeface(null, Typeface.BOLD);
-                return v;
+        // Find selected index
+        int selectedIndex = -1;
+        if (pendingTextColor != null) {
+            for (int i = 0; i < textColors.length; i++) {
+                if (textColors[i] == pendingTextColor) {
+                    selectedIndex = i;
+                    break;
+                }
             }
-        };
+        }
 
-        builder.setAdapter(adapter, (dialog, which) -> {
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Font color", textColors, selectedIndex);
+        sheet.setListener(index -> {
             if (hasSelection()) {
-                editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[which]), start, end,
+                editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[index]), start, end,
                         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             } else {
-                pendingTextColor = textColors[which];
+                pendingTextColor = textColors[index];
                 updateToolbarUI();
             }
+            sheet.dismiss(); // Dismiss on selection
         });
-        builder.show();
+        sheet.show(getSupportFragmentManager(), "TextColorSheet");
     }
 
     private void applyHighlight(int colorIndex, int start, int end) {
