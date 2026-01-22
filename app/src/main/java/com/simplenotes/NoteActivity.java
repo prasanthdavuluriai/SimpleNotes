@@ -871,8 +871,6 @@ public class NoteActivity extends AppCompatActivity {
     private void showTextColorPicker() {
         int start = editTextContent.getSelectionStart();
         int end = editTextContent.getSelectionEnd();
-        if (start == end)
-            return;
 
         final int[] textColors = new int[] {
                 ContextCompat.getColor(this, R.color.text_black),
