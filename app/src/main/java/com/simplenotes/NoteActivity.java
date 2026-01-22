@@ -1086,11 +1086,6 @@ public class NoteActivity extends AppCompatActivity {
                             highlightMatcher.end(2),
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                    // Force text color black using AutoColorSpan
-                    text.setSpan(new AutoColorSpan(textColor),
-                            highlightMatcher.start(2),
-                            highlightMatcher.end(2),
-                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (Exception e) {
             }
