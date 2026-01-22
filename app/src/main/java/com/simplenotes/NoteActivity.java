@@ -50,6 +50,14 @@ public class NoteActivity extends AppCompatActivity {
 
     private AppDatabase database;
 
+    // Sticky Formatting State
+    private boolean pendingBold = false;
+    private boolean pendingItalic = false;
+    private boolean pendingUnderline = false;
+    private Integer pendingTextColor = null;
+    private Integer pendingHighlightColor = null;
+    private boolean isTyping = false; // Prevent recursion
+
     // Rich Text Toolbar
     private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
 
@@ -110,6 +118,130 @@ public class NoteActivity extends AppCompatActivity {
         btnBackendColor = findViewById(R.id.btnBackendColor);
 
         setupFormattingButtons();
+        setupStickyFormatting();
+    }
+
+    private void setupStickyFormatting() {
+        editTextContent.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (isTyping || count == 0)
+                    return; // Ignore deletions or internal changes
+
+                // Only apply if we have pending styles
+                if (pendingBold || pendingItalic || pendingUnderline || pendingTextColor != null
+                        || pendingHighlightColor != null) {
+                    applyPendingStyles(start, count);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+            }
+        });
+    }
+
+    private void applyPendingStyles(int start, int count) {
+        isTyping = true;
+        try {
+            android.text.Editable editable = editTextContent.getText();
+            int end = start + count;
+
+            // 1. Highlight is special (Needs markers for persistence)
+            if (pendingHighlightColor != null) {
+                // We must wrap the new text with markers: \u200C{idx} TEXT \u200D
+                // This requires modifying text, which triggers onTextChanged again (recursion
+                // guarded by isTyping)
+                String newText = editable.subSequence(start, end).toString();
+                String wrapped = "\u200C{" + pendingHighlightColor + "}" + newText + "\u200D";
+                editable.replace(start, end, wrapped);
+
+                // Re-calculate end because text grew
+                // marker len = 1 + 1 + 1 (min) + 1 + 1 = ~5 chars
+            }
+
+            // 2. Standard Styles (Apply to the range)
+            // Note: If we inserted highlights, the range 'start' to 'end' is now
+            // markers+text
+            // But usually we want bold inside the text.
+            // Simplified: Just apply to the whole inserted block (including markers is
+            // fine, they are hidden)
+            // Or better: Re-calculate the range of the *visible* content if highlight
+            // changed it.
+
+            // Actually, if we use applyStyling() for highlights, it hides markers.
+            // Let's rely on applyStyling() for highlights and standard spans for others.
+
+            if (pendingHighlightColor != null) {
+                applyStyling(); // This parses markers and applies ResolvedHighlighterSpan
+                // The markers are now hidden. We need to find where our text went?
+                // Complicated.
+                // Alternative: Don't use markers for sticky char-by-char. Use markers only for
+                // block selection?
+                // But user wants persistence.
+
+                // Let's stick to: Apply Pending Highlight = Insert Markers.
+                // Reset flag? No, sticky implies it stays.
+            }
+
+            // Re-get (in case replaced)
+            editable = editTextContent.getText();
+            // If we replaced text, 'end' is stale. But for Bold/Italic, we just span the
+            // range.
+            // If Highlight was applied, the text length changed.
+            // However, typical sticky bold is applied to the typed character.
+
+            if (pendingBold)
+                editable.setSpan(new StyleSpan(Typeface.BOLD), start, start + count, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingItalic)
+                editable.setSpan(new StyleSpan(Typeface.ITALIC), start, start + count,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingUnderline)
+                editable.setSpan(new UnderlineSpan(), start, start + count, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingTextColor != null)
+                editable.setSpan(new ForegroundColorSpan(pendingTextColor), start, start + count,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            isTyping = false;
+        }
+    }
+
+    // reset pending?
+    private void resetPendingStyles() {
+        pendingBold = false;
+        pendingItalic = false;
+        pendingUnderline = false;
+        pendingTextColor = null;
+        pendingHighlightColor = null;
+        updateToolbarUI();
+    }
+
+    private void updateToolbarUI() {
+        // Visual feedback (Primitive: Alpha or Tint)
+        // Active = ColorAccent or Darker
+        int activeColor = ContextCompat.getColor(this, R.color.bible_gold);
+        int inactiveColor = ContextCompat.getColor(this, R.color.bible_cream);
+
+        btnBold.setColorFilter(pendingBold ? activeColor : inactiveColor);
+        btnItalic.setColorFilter(pendingItalic ? activeColor : inactiveColor);
+        btnUnderline.setColorFilter(pendingUnderline ? activeColor : inactiveColor);
+
+        if (pendingTextColor != null)
+            btnTextColor.setColorFilter(pendingTextColor);
+        else
+            btnTextColor.setColorFilter(inactiveColor);
+
+        if (pendingHighlightColor != null)
+            btnBackendColor.setColorFilter(highlightColors[pendingHighlightColor]);
+        else
+            btnBackendColor.setColorFilter(inactiveColor);
     }
 
     private void checkIntentData() {
@@ -593,27 +725,83 @@ public class NoteActivity extends AppCompatActivity {
     // Setup Formatting Listeners
     private void setupFormattingButtons() {
         // [VERIFICATION] Binding toolbar actions to rich text logic
-        btnBold.setOnClickListener(v -> toggleStyle(Typeface.BOLD));
-        btnItalic.setOnClickListener(v -> toggleStyle(Typeface.ITALIC));
-        btnUnderline.setOnClickListener(v -> toggleUnderline());
+        btnBold.setOnClickListener(v -> {
+            if (hasSelection())
+                toggleStyle(Typeface.BOLD);
+            else {
+                pendingBold = !pendingBold;
+                updateToolbarUI();
+            }
+        });
+        btnItalic.setOnClickListener(v -> {
+            if (hasSelection())
+                toggleStyle(Typeface.ITALIC);
+            else {
+                pendingItalic = !pendingItalic;
+                updateToolbarUI();
+            }
+        });
+        btnUnderline.setOnClickListener(v -> {
+            if (hasSelection())
+                toggleUnderline();
+            else {
+                pendingUnderline = !pendingUnderline;
+                updateToolbarUI();
+            }
+        });
         btnTextColor.setOnClickListener(v -> showTextColorPicker());
-        btnBackendColor.setOnClickListener(v -> {
-            // Trigger the same highlight color picker logic
+        btnBackendColor.setOnClickListener(v -> showHighlightPickerLogic());
+    }
+
+    private boolean hasSelection() {
+        int start = editTextContent.getSelectionStart();
+        int end = editTextContent.getSelectionEnd();
+        return start != end && start >= 0;
+    }
+
+    private void showHighlightPickerLogic() {
+        if (hasSelection()) {
             // Use current selection
             int start = editTextContent.getSelectionStart();
             int end = editTextContent.getSelectionEnd();
-            if (start == end) { // If no selection, select word
-                selectCurrentWord();
-                start = editTextContent.getSelectionStart();
-                end = editTextContent.getSelectionEnd();
+            showHighlightColorPicker(null);
+        } else {
+            // Sticky Mode
+            // Show picker to SET pending color
+            showStickyHighlightPicker();
+        }
+    }
+
+    private void showStickyHighlightPicker() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Choose Highlight Color");
+
+        // Re-use adapter? Or Copy-paste for simplicity (Adapter depends on local
+        // textview styling)
+        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
+                android.R.layout.select_dialog_item, highlightColorNames) {
+            @NonNull
+            @Override
+            public View getView(int position, @androidx.annotation.Nullable View convertView,
+                    @NonNull ViewGroup parent) {
+                View v = super.getView(position, convertView, parent);
+                android.widget.TextView tv = (android.widget.TextView) v;
+                tv.setTextColor(highlightColors[position]);
+                tv.setTypeface(null, Typeface.BOLD);
+                return v;
             }
-            if (start != end) {
-                // Pseudo-action mode not needed using mode=null logic
-                showHighlightColorPicker(null);
-            } else {
-                Toast.makeText(this, "Select text to highlight", Toast.LENGTH_SHORT).show();
-            }
+        };
+
+        builder.setAdapter(adapter, (dialog, which) -> {
+            pendingHighlightColor = which; // Set flag
+            updateToolbarUI();
         });
+
+        builder.setNegativeButton("Clear Highlight", (dialog, which) -> {
+            pendingHighlightColor = null;
+            updateToolbarUI();
+        });
+        builder.show();
     }
 
     private void selectCurrentWord() {
@@ -722,8 +910,13 @@ public class NoteActivity extends AppCompatActivity {
         };
 
         builder.setAdapter(adapter, (dialog, which) -> {
-            editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[which]), start, end,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (hasSelection()) {
+                editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[which]), start, end,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                pendingTextColor = textColors[which];
+                updateToolbarUI();
+            }
         });
         builder.show();
     }
