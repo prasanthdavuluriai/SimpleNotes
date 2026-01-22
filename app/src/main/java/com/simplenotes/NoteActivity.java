@@ -592,6 +592,7 @@ public class NoteActivity extends AppCompatActivity {
 
     // Setup Formatting Listeners
     private void setupFormattingButtons() {
+        // [VERIFICATION] Binding toolbar actions to rich text logic
         btnBold.setOnClickListener(v -> toggleStyle(Typeface.BOLD));
         btnItalic.setOnClickListener(v -> toggleStyle(Typeface.ITALIC));
         btnUnderline.setOnClickListener(v -> toggleUnderline());
