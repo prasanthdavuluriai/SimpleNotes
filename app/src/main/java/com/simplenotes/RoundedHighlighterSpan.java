@@ -63,30 +63,22 @@ public class RoundedHighlighterSpan implements LineBackgroundSpan {
             return p.measureText(text, start, end);
 
         Spanned spanned = (Spanned) text;
-        android.text.style.ScaleXSpan[] spans = spanned.getSpans(start, end, android.text.style.ScaleXSpan.class);
+        HiddenSpan[] spans = spanned.getSpans(start, end, HiddenSpan.class);
 
-        boolean hasHidden = false;
-        for (android.text.style.ScaleXSpan span : spans) {
-            if (span.getScaleX() == 0f) {
-                hasHidden = true;
-                break;
-            }
-        }
-
-        if (!hasHidden)
+        // Optimization: if no hidden spans in range, fast path
+        if (spans.length == 0)
             return p.measureText(text, start, end);
 
+        // Slow path: measure character by character skipping hidden ones
         float width = 0f;
         for (int i = start; i < end; i++) {
             boolean hiddenChar = false;
-            for (android.text.style.ScaleXSpan span : spans) {
-                if (span.getScaleX() == 0f) {
-                    int s = spanned.getSpanStart(span);
-                    int e = spanned.getSpanEnd(span);
-                    if (i >= s && i < e) {
-                        hiddenChar = true;
-                        break;
-                    }
+            for (HiddenSpan span : spans) {
+                int s = spanned.getSpanStart(span);
+                int e = spanned.getSpanEnd(span);
+                if (i >= s && i < e) {
+                    hiddenChar = true;
+                    break;
                 }
             }
             if (!hiddenChar) {

@@ -666,12 +666,12 @@ public class NoteActivity extends AppCompatActivity {
         for (BackgroundColorSpan span : colorSpans)
             text.removeSpan(span);
 
-        RoundedHighlighterSpan[] roundedSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
-        for (RoundedHighlighterSpan span : roundedSpans)
+        RoundedHighlighterSpan[] colorSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
+        for (RoundedHighlighterSpan span : colorSpans)
             text.removeSpan(span);
 
-        ScaleXSpan[] scaleSpans = text.getSpans(0, text.length(), ScaleXSpan.class);
-        for (ScaleXSpan span : scaleSpans)
+        HiddenSpan[] hiddenSpans = text.getSpans(0, text.length(), HiddenSpan.class);
+        for (HiddenSpan span : hiddenSpans)
             text.removeSpan(span);
 
         // 2. Hide ALL Markers Globally (Robustness)
@@ -682,10 +682,7 @@ public class NoteActivity extends AppCompatActivity {
         int transparent = android.graphics.Color.TRANSPARENT;
 
         while (markerMatcher.find()) {
-            text.setSpan(new ScaleXSpan(0f), markerMatcher.start(), markerMatcher.end(),
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            // Backup: Apply Transparent Color
-            text.setSpan(new ForegroundColorSpan(transparent), markerMatcher.start(), markerMatcher.end(),
+            text.setSpan(new HiddenSpan(), markerMatcher.start(), markerMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
@@ -696,9 +693,10 @@ public class NoteActivity extends AppCompatActivity {
         int goldColor = ContextCompat.getColor(this, R.color.bible_gold);
 
         while (verseMatcher.find()) {
-            text.setSpan(new ScaleXSpan(0f), verseMatcher.start(), verseMatcher.start(1),
+            // Hide the \u200B markers
+            text.setSpan(new HiddenSpan(), verseMatcher.start(), verseMatcher.start(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            text.setSpan(new ScaleXSpan(0f), verseMatcher.end(1), verseMatcher.end(),
+            text.setSpan(new HiddenSpan(), verseMatcher.end(1), verseMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setSpan(new ForegroundColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -714,6 +712,12 @@ public class NoteActivity extends AppCompatActivity {
         while (highlightMatcher.find()) {
             try {
                 int colorIndex = Integer.parseInt(highlightMatcher.group(1));
+
+                // Explicitly hide markers with HiddenSpan
+                text.setSpan(new HiddenSpan(), highlightMatcher.start(), highlightMatcher.start(2),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                text.setSpan(new HiddenSpan(), highlightMatcher.end(2), highlightMatcher.end(),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                 if (colorIndex >= 0 && colorIndex < highlightColors.length) {
                     int bgColor = highlightColors[colorIndex];
