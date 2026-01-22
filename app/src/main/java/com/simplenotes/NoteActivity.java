@@ -708,11 +708,18 @@ public class NoteActivity extends AppCompatActivity {
         // We don't easily know the CURRENT highlight color of the selection without
         // parsing.
         // Default to -1 (none selected) or 0?
-        int selectedIndex = -1;
+        // Current selection color? Hard to determine. Default to 0 (None)
+        int selectedIndex = 0; // Default to "None"
 
-        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", highlightColors, selectedIndex);
+        int[] displayColors = prependZero(highlightColors);
+
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", displayColors, selectedIndex);
         sheet.setListener(index -> {
-            applyHighlight(index, start, end);
+            if (index == 0) {
+                removeHighlight(start, end);
+            } else {
+                applyHighlight(index - 1, start, end); // Map back to 0-based
+            }
             if (mode != null)
                 mode.finish();
             sheet.dismiss();
@@ -722,11 +729,18 @@ public class NoteActivity extends AppCompatActivity {
 
     // Sticky Highlight Picker
     private void showStickyHighlightPicker() {
-        int selectedIndex = pendingHighlightColor != null ? pendingHighlightColor : -1;
+        // Map pending (null/0-based) to UI (0=None, 1..N=Colors)
+        int selectedIndex = (pendingHighlightColor == null) ? 0 : pendingHighlightColor + 1;
 
-        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", highlightColors, selectedIndex);
+        int[] displayColors = prependZero(highlightColors);
+
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", displayColors, selectedIndex);
         sheet.setListener(index -> {
-            pendingHighlightColor = index;
+            if (index == 0)
+                pendingHighlightColor = null;
+            else
+                pendingHighlightColor = index - 1;
+
             updateToolbarUI();
             sheet.dismiss();
         });
@@ -851,29 +865,60 @@ public class NoteActivity extends AppCompatActivity {
         int start = editTextContent.getSelectionStart();
         int end = editTextContent.getSelectionEnd();
 
-        // Find selected index
-        int selectedIndex = -1;
+        // Find selected index logic
+        // UI Index: 0 = Default, 1..N = Colors
+        int selectedIndex = 0; // Default to "None"
         if (pendingTextColor != null) {
             for (int i = 0; i < textColors.length; i++) {
                 if (textColors[i] == pendingTextColor) {
-                    selectedIndex = i;
+                    selectedIndex = i + 1; // Map to UI
                     break;
                 }
             }
         }
 
-        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Font color", textColors, selectedIndex);
+        int[] displayColors = prependZero(textColors);
+
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Font color", displayColors, selectedIndex);
         sheet.setListener(index -> {
             if (hasSelection()) {
-                editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[index]), start, end,
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (index == 0) {
+                    // Clear Color Spans
+                    removeTextColor(start, end);
+                } else {
+                    editTextContent.getText().setSpan(new ForegroundColorSpan(textColors[index - 1]), start, end,
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
             } else {
-                pendingTextColor = textColors[index];
+                if (index == 0)
+                    pendingTextColor = null;
+                else
+                    pendingTextColor = textColors[index - 1];
                 updateToolbarUI();
             }
-            sheet.dismiss(); // Dismiss on selection
+            sheet.dismiss();
         });
         sheet.show(getSupportFragmentManager(), "TextColorSheet");
+    }
+
+    private void removeTextColor(int start, int end) {
+        if (start >= end)
+            return;
+        Spannable str = editTextContent.getText();
+        ForegroundColorSpan[] spans = str.getSpans(start, end, ForegroundColorSpan.class);
+        for (ForegroundColorSpan span : spans) {
+            int s = str.getSpanStart(span);
+            int e = str.getSpanEnd(span);
+            str.removeSpan(span);
+
+            // Restore parts outside selection
+            if (s < start)
+                str.setSpan(new ForegroundColorSpan(span.getForegroundColor()), s, start,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (e > end)
+                str.setSpan(new ForegroundColorSpan(span.getForegroundColor()), end, e,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
     }
 
     private void applyHighlight(int colorIndex, int start, int end) {
@@ -1089,8 +1134,16 @@ public class NoteActivity extends AppCompatActivity {
 
         // Save to DB (Using insert with REPLACE acts as Upsert, ensuring it saves even
         // if initial insert missed)
+        // Save to DB
         AppExecutors.getInstance().diskIO().execute(() -> {
             database.noteDao().insert(currentNote);
         });
+    }
+
+    private int[] prependZero(int[] original) {
+        int[] result = new int[original.length + 1];
+        result[0] = 0; // The "None" value
+        System.arraycopy(original, 0, result, 1, original.length);
+        return result;
     }
 }

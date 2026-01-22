@@ -119,11 +119,16 @@ public class ColorBottomSheet extends BottomSheetDialogFragment {
             }
 
             void bind(int color, boolean isSelected) {
-                // Create circle drawable
-                GradientDrawable drawable = new GradientDrawable();
-                drawable.setShape(GradientDrawable.OVAL);
-                drawable.setColor(color);
-                viewColorSwatch.setBackground(drawable);
+                if (color == 0) {
+                    // "None" / Reset option
+                    viewColorSwatch.setBackgroundResource(R.drawable.ic_color_reset);
+                } else {
+                    // Create circle drawable
+                    GradientDrawable drawable = new GradientDrawable();
+                    drawable.setShape(GradientDrawable.OVAL);
+                    drawable.setColor(color);
+                    viewColorSwatch.setBackground(drawable);
+                }
 
                 imageViewCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
             }
