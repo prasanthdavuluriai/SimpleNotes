@@ -566,13 +566,18 @@ public class NoteActivity extends AppCompatActivity {
         String str = text.toString();
 
         // Robust Smart Expansion using Regex
-        // 1. Expand START to include preceding marker \u200C{digits}
-        // Matcher finds all markers. If one ends exactly at 'start', we consume it.
+        // 1. Expand START to include preceding OR overlapping marker \u200C{digits}
+        // Scan for all markers. If start falls INSIDE or AT THE END of a marker, expand
+        // to marker start.
         java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
         while (startMatcher.find()) {
-            if (startMatcher.end() == start) {
-                start = startMatcher.start();
-                break; // Found the immediate predecessor
+            int mStart = startMatcher.start();
+            int mEnd = startMatcher.end();
+            // If selection starts inside the marker (mStart < start < mEnd)
+            // OR exactly at the end (start == mEnd)
+            if (start > mStart && start <= mEnd) {
+                start = mStart;
+                break;
             }
         }
 
@@ -608,8 +613,10 @@ public class NoteActivity extends AppCompatActivity {
         // Mirror START expansion
         java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
         while (startMatcher.find()) {
-            if (startMatcher.end() == start) {
-                start = startMatcher.start();
+            int mStart = startMatcher.start();
+            int mEnd = startMatcher.end();
+            if (start > mStart && start <= mEnd) {
+                start = mStart;
                 break;
             }
         }
