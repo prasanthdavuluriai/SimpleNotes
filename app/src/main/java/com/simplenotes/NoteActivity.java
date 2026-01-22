@@ -44,6 +44,7 @@ public class NoteActivity extends AppCompatActivity {
     // Highlighting
     private int[] highlightColors;
     private String[] highlightColorNames;
+    private int[] textColors; // [NEW] Class field
 
     private Note currentNote;
     private boolean isNewNote = true;
@@ -647,6 +648,21 @@ public class NoteActivity extends AppCompatActivity {
                 ContextCompat.getColor(this, R.color.highlight_peach)
         };
         highlightColorNames = new String[] { "Gold", "Blue", "Green", "Pink", "Purple", "Peach" };
+
+        textColors = new int[] {
+                ContextCompat.getColor(this, R.color.text_black),
+                ContextCompat.getColor(this, R.color.text_grey),
+                ContextCompat.getColor(this, R.color.text_red),
+                ContextCompat.getColor(this, R.color.text_orange),
+                ContextCompat.getColor(this, R.color.text_yellow),
+                ContextCompat.getColor(this, R.color.text_green),
+                ContextCompat.getColor(this, R.color.text_teal),
+                ContextCompat.getColor(this, R.color.text_blue),
+                ContextCompat.getColor(this, R.color.text_indigo),
+                ContextCompat.getColor(this, R.color.text_purple),
+                ContextCompat.getColor(this, R.color.text_pink),
+                ContextCompat.getColor(this, R.color.text_brown)
+        };
     }
 
     private void setupSelectionMenu() {
@@ -683,43 +699,38 @@ public class NoteActivity extends AppCompatActivity {
         int start = editTextContent.getSelectionStart();
         int end = editTextContent.getSelectionEnd();
 
-        if (start == end)
-            return; // No selection
+        if (start == end && mode != null) {
+            // mode implies we were triggered from selection menu, but selection is empty?
+            // Should not happen, but safe guard.
+            return;
+        }
 
-        // Check if already highlighted (simple check)
-        String selectedText = editTextContent.getText().subSequence(start, end).toString();
+        // We don't easily know the CURRENT highlight color of the selection without
+        // parsing.
+        // Default to -1 (none selected) or 0?
+        int selectedIndex = -1;
 
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("Choose Highlight Color");
-
-        // Simple list adapter for colors
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
-                android.R.layout.select_dialog_item, highlightColorNames) {
-            @NonNull
-            @Override
-            public View getView(int position, @androidx.annotation.Nullable View convertView,
-                    @NonNull ViewGroup parent) {
-                View v = super.getView(position, convertView, parent);
-                android.widget.TextView tv = (android.widget.TextView) v;
-                tv.setTextColor(highlightColors[position]);
-                tv.setTypeface(null, Typeface.BOLD);
-                return v;
-            }
-        };
-
-        builder.setAdapter(adapter, (dialog, which) -> {
-            applyHighlight(which, start, end);
-            if (mode != null)
-                mode.finish(); // Close selection menu if exists
-        });
-
-        builder.setNegativeButton("Remove Highlight", (dialog, which) -> {
-            removeHighlight(start, end);
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", highlightColors, selectedIndex);
+        sheet.setListener(index -> {
+            applyHighlight(index, start, end);
             if (mode != null)
                 mode.finish();
+            sheet.dismiss();
         });
+        sheet.show(getSupportFragmentManager(), "HighlightSheet");
+    }
 
-        builder.show();
+    // Sticky Highlight Picker
+    private void showStickyHighlightPicker() {
+        int selectedIndex = pendingHighlightColor != null ? pendingHighlightColor : -1;
+
+        ColorBottomSheet sheet = ColorBottomSheet.newInstance("Highlight color", highlightColors, selectedIndex);
+        sheet.setListener(index -> {
+            pendingHighlightColor = index;
+            updateToolbarUI();
+            sheet.dismiss();
+        });
+        sheet.show(getSupportFragmentManager(), "StickyHighlightSheet");
     }
 
     // Setup Formatting Listeners
@@ -770,38 +781,6 @@ public class NoteActivity extends AppCompatActivity {
             // Show picker to SET pending color
             showStickyHighlightPicker();
         }
-    }
-
-    private void showStickyHighlightPicker() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Choose Highlight Color");
-
-        // Re-use adapter? Or Copy-paste for simplicity (Adapter depends on local
-        // textview styling)
-        android.widget.ArrayAdapter<String> adapter = new android.widget.ArrayAdapter<String>(this,
-                android.R.layout.select_dialog_item, highlightColorNames) {
-            @NonNull
-            @Override
-            public View getView(int position, @androidx.annotation.Nullable View convertView,
-                    @NonNull ViewGroup parent) {
-                View v = super.getView(position, convertView, parent);
-                android.widget.TextView tv = (android.widget.TextView) v;
-                tv.setTextColor(highlightColors[position]);
-                tv.setTypeface(null, Typeface.BOLD);
-                return v;
-            }
-        };
-
-        builder.setAdapter(adapter, (dialog, which) -> {
-            pendingHighlightColor = which; // Set flag
-            updateToolbarUI();
-        });
-
-        builder.setNegativeButton("Clear Highlight", (dialog, which) -> {
-            pendingHighlightColor = null;
-            updateToolbarUI();
-        });
-        builder.show();
     }
 
     private void selectCurrentWord() {
