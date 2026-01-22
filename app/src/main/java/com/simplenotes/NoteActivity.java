@@ -666,8 +666,8 @@ public class NoteActivity extends AppCompatActivity {
         for (BackgroundColorSpan span : colorSpans)
             text.removeSpan(span);
 
-        RoundedHighlighterSpan[] colorSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
-        for (RoundedHighlighterSpan span : colorSpans)
+        RoundedHighlighterSpan[] roundedSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
+        for (RoundedHighlighterSpan span : roundedSpans)
             text.removeSpan(span);
 
         HiddenSpan[] hiddenSpans = text.getSpans(0, text.length(), HiddenSpan.class);
