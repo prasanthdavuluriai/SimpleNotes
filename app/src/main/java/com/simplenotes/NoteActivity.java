@@ -562,10 +562,35 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void applyHighlight(int colorIndex, int start, int end) {
+        android.text.Editable text = editTextContent.getText();
+
+        // Smart Expansion: Check if selection touches existing markers and expand to
+        // include them
+        // Check Start: Look for \u200C{d} (max 4-5 chars back)
+        // \u200C is 1, { is 1, d is 1+, } is 1. Min 4 chars.
+        if (start >= 4) {
+            // Check for } at start-1
+            if (text.charAt(start - 1) == '}') {
+                // Scan back for \u200C
+                for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
+                    if (text.charAt(start - i) == '\u200C') {
+                        start = start - i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Check End: Look for \u200C
+        if (end < text.length()) {
+            if (text.charAt(end) == '\u200C') {
+                end = end + 1;
+            }
+        }
+
         if (start < 0 || end < 0 || start >= end)
             return;
 
-        android.text.Editable text = editTextContent.getText();
         String selected = text.subSequence(start, end).toString();
 
         // Format: \u200C{index}content\u200C
@@ -581,11 +606,20 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void removeHighlight(int start, int end) {
-        // Logic to strip markers is complex with selection,
-        // simpler approach: get expanded string, Strip markers
-        // For now, let applyHighlight handle re-wrapping which effectively updates it.
-        // To strictly remove:
+        // Same smart expansion for removal
         android.text.Editable text = editTextContent.getText();
+        if (start >= 4 && text.charAt(start - 1) == '}') {
+            for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
+                if (text.charAt(start - i) == '\u200C') {
+                    start = start - i;
+                    break;
+                }
+            }
+        }
+        if (end < text.length() && text.charAt(end) == '\u200C') {
+            end = end + 1;
+        }
+
         String selected = text.subSequence(start, end).toString();
         selected = selected.replace("\u200C", "").replaceAll("\\{\\d+\\}", "");
         text.replace(start, end, selected);
@@ -596,7 +630,7 @@ public class NoteActivity extends AppCompatActivity {
         android.text.Editable text = editTextContent.getText();
         String content = text.toString();
 
-        // 1. Clear existing spans to avoid duplicates
+        // 1. Clear existing spans
         ForegroundColorSpan[] fgSpans = text.getSpans(0, text.length(), ForegroundColorSpan.class);
         for (ForegroundColorSpan span : fgSpans)
             text.removeSpan(span);
@@ -605,15 +639,24 @@ public class NoteActivity extends AppCompatActivity {
         for (RoundedBackgroundSpan span : bgSpans)
             text.removeSpan(span);
 
-        BackgroundColorSpan[] colorSpans = text.getSpans(0, text.length(), BackgroundColorSpan.class);
-        for (BackgroundColorSpan span : colorSpans)
+        RoundedHighlighterSpan[] colorSpans = text.getSpans(0, text.length(), RoundedHighlighterSpan.class);
+        for (RoundedHighlighterSpan span : colorSpans)
             text.removeSpan(span);
 
         ScaleXSpan[] scaleSpans = text.getSpans(0, text.length(), ScaleXSpan.class);
         for (ScaleXSpan span : scaleSpans)
             text.removeSpan(span);
 
-        // 2. Bible Verse Styling: \u200B...\u200B
+        // 2. Hide ALL Highlight Markers Globally First (Robustness)
+        // Matches \u200C followed optionally by {digits}
+        java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("\u200C(\\{\\d+\\})?");
+        java.util.regex.Matcher markerMatcher = markerPattern.matcher(content);
+        while (markerMatcher.find()) {
+            text.setSpan(new ScaleXSpan(0f), markerMatcher.start(), markerMatcher.end(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        // 3. Bible Verse Styling: \u200B...\u200B
         java.util.regex.Pattern versePattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher verseMatcher = versePattern.matcher(content);
@@ -634,35 +677,27 @@ public class NoteActivity extends AppCompatActivity {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        // 3. Highlight Styling: \u200C{index}...\u200C
+        // 4. Highlight Coloring
         java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200C",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
 
-        int textColor = ContextCompat.getColor(this, R.color.black); // Force black text for readability on pastels
+        int textColor = ContextCompat.getColor(this, R.color.black); // Force text color black
 
         while (highlightMatcher.find()) {
             try {
                 int colorIndex = Integer.parseInt(highlightMatcher.group(1));
 
-                // Hide start marker: \u200C{index}
-                text.setSpan(new ScaleXSpan(0f), highlightMatcher.start(), highlightMatcher.start(2),
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                // Hide end marker: \u200C
-                text.setSpan(new ScaleXSpan(0f), highlightMatcher.end(2), highlightMatcher.end(),
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-
                 if (colorIndex >= 0 && colorIndex < highlightColors.length) {
                     int bgColor = highlightColors[colorIndex];
 
-                    // Apply Background Color to Content
-                    text.setSpan(new BackgroundColorSpan(bgColor),
+                    // Apply Rounded Highlighter (Widget Look)
+                    text.setSpan(new RoundedHighlighterSpan(bgColor, 12f),
                             highlightMatcher.start(2), // Start of content
                             highlightMatcher.end(2), // End of content
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                    // Force text color black for high contrast against pastel
+                    // Force text color black
                     text.setSpan(new ForegroundColorSpan(textColor),
                             highlightMatcher.start(2),
                             highlightMatcher.end(2),
