@@ -563,26 +563,25 @@ public class NoteActivity extends AppCompatActivity {
 
     private void applyHighlight(int colorIndex, int start, int end) {
         android.text.Editable text = editTextContent.getText();
+        String str = text.toString();
 
-        // Smart Expansion: Check if selection touches existing markers and expand to
-        // include them
-        // Check Start: Look for \u200C{d} (max 4-5 chars back)
-        if (start >= 4) {
-            if (text.charAt(start - 1) == '}') {
-                for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
-                    if (text.charAt(start - i) == '\u200C') {
-                        start = start - i;
-                        break;
-                    }
-                }
+        // Robust Smart Expansion using Regex
+        // 1. Expand START to include preceding marker \u200C{digits}
+        // Matcher finds all markers. If one ends exactly at 'start', we consume it.
+        java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
+        while (startMatcher.find()) {
+            if (startMatcher.end() == start) {
+                start = startMatcher.start();
+                break; // Found the immediate predecessor
             }
         }
 
-        // Check End: Look for \u200D (NEW) or \u200C (LEGACY)
-        if (end < text.length()) {
-            char nextChar = text.charAt(end);
-            if (nextChar == '\u200D' || nextChar == '\u200C') {
-                end = end + 1;
+        // 2. Expand END to include succeeding marker \u200D (or legacy \u200C)
+        // Check immediate char at 'end'
+        if (end < str.length()) {
+            char c = str.charAt(end);
+            if (c == '\u200D' || c == '\u200C') {
+                end++;
             }
         }
 
@@ -604,20 +603,27 @@ public class NoteActivity extends AppCompatActivity {
 
     private void removeHighlight(int start, int end) {
         android.text.Editable text = editTextContent.getText();
-        // Smart Expansion logic (mirrored)
-        if (start >= 4 && text.charAt(start - 1) == '}') {
-            for (int i = 2; i <= 5 && (start - i) >= 0; i++) {
-                if (text.charAt(start - i) == '\u200C') {
-                    start = start - i;
-                    break;
-                }
+        String str = text.toString();
+
+        // Mirror START expansion
+        java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
+        while (startMatcher.find()) {
+            if (startMatcher.end() == start) {
+                start = startMatcher.start();
+                break;
             }
         }
-        if (end < text.length()) {
-            char nextChar = text.charAt(end);
-            if (nextChar == '\u200D' || nextChar == '\u200C')
-                end = end + 1;
+
+        // Mirror END expansion
+        if (end < str.length()) {
+            char c = str.charAt(end);
+            if (c == '\u200D' || c == '\u200C') {
+                end++;
+            }
         }
+
+        if (start < 0 || end < 0 || start >= end)
+            return;
 
         String selected = text.subSequence(start, end).toString();
         selected = selected.replace("\u200C", "").replace("\u200D", "").replaceAll("\\{\\d+\\}", "");
@@ -675,8 +681,8 @@ public class NoteActivity extends AppCompatActivity {
             text.removeSpan(span);
 
         // 2. Hide ALL Markers Globally (Robustness)
-        // Matches \u200C{digits} OR \u200D
-        java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("(\u200C\\{\\d+\\})|\u200D");
+        // Matches \u200C{digits} OR \u200D OR just \u200C (orphaned)
+        java.util.regex.Pattern markerPattern = java.util.regex.Pattern.compile("(\u200C(\\{\\d+\\})?)|\u200D");
         java.util.regex.Matcher markerMatcher = markerPattern.matcher(content);
 
         int transparent = android.graphics.Color.TRANSPARENT;
