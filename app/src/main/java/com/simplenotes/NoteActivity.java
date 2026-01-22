@@ -14,6 +14,8 @@ import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.ScaleXSpan;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.textfield.TextInputEditText;
@@ -603,6 +605,14 @@ public class NoteActivity extends AppCompatActivity {
         for (RoundedBackgroundSpan span : bgSpans)
             text.removeSpan(span);
 
+        BackgroundColorSpan[] colorSpans = text.getSpans(0, text.length(), BackgroundColorSpan.class);
+        for (BackgroundColorSpan span : colorSpans)
+            text.removeSpan(span);
+
+        ScaleXSpan[] scaleSpans = text.getSpans(0, text.length(), ScaleXSpan.class);
+        for (ScaleXSpan span : scaleSpans)
+            text.removeSpan(span);
+
         // 2. Bible Verse Styling: \u200B...\u200B
         java.util.regex.Pattern versePattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
                 java.util.regex.Pattern.DOTALL);
@@ -611,9 +621,16 @@ public class NoteActivity extends AppCompatActivity {
         int goldColor = ContextCompat.getColor(this, R.color.bible_gold);
 
         while (verseMatcher.find()) {
+            // Hide the \u200B markers
+            text.setSpan(new ScaleXSpan(0f), verseMatcher.start(), verseMatcher.start(1),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            text.setSpan(new ScaleXSpan(0f), verseMatcher.end(1), verseMatcher.end(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            // Color the content
             text.setSpan(new ForegroundColorSpan(goldColor),
-                    verseMatcher.start(),
-                    verseMatcher.end(),
+                    verseMatcher.start(1),
+                    verseMatcher.end(1),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
@@ -622,17 +639,33 @@ public class NoteActivity extends AppCompatActivity {
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
 
-        int textColor = ContextCompat.getColor(this, R.color.bible_blue_dark); // Default text color
+        int textColor = ContextCompat.getColor(this, R.color.black); // Force black text for readability on pastels
 
         while (highlightMatcher.find()) {
             try {
                 int colorIndex = Integer.parseInt(highlightMatcher.group(1));
+
+                // Hide start marker: \u200C{index}
+                text.setSpan(new ScaleXSpan(0f), highlightMatcher.start(), highlightMatcher.start(2),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                // Hide end marker: \u200C
+                text.setSpan(new ScaleXSpan(0f), highlightMatcher.end(2), highlightMatcher.end(),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
                 if (colorIndex >= 0 && colorIndex < highlightColors.length) {
                     int bgColor = highlightColors[colorIndex];
 
-                    text.setSpan(new RoundedBackgroundSpan(bgColor, textColor, 12f, 8f),
-                            highlightMatcher.start(),
-                            highlightMatcher.end(),
+                    // Apply Background Color to Content
+                    text.setSpan(new BackgroundColorSpan(bgColor),
+                            highlightMatcher.start(2), // Start of content
+                            highlightMatcher.end(2), // End of content
+                            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                    // Force text color black for high contrast against pastel
+                    text.setSpan(new ForegroundColorSpan(textColor),
+                            highlightMatcher.start(2),
+                            highlightMatcher.end(2),
                             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             } catch (Exception e) {
