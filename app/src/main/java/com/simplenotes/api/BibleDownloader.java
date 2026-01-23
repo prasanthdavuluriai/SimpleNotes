@@ -60,7 +60,7 @@ public class BibleDownloader {
     }
 
     public static boolean isVersionSupported(String versionId) {
-        return VERSION_URLS.containsKey(versionId);
+        return VERSION_URLS.containsKey(versionId) || versionId.equals("tel");
     }
 
     /**

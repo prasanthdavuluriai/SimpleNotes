@@ -136,8 +136,9 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
             }
 
             holder.itemView.setOnClickListener(v -> {
-                // Smart Selection for Offline-Only Versions (NIV/NLT)
-                if (!version.isDownloaded() && (version.getId().equals("niv") || version.getId().equals("nlt"))) {
+                // Smart Selection for Offline-Only Versions (NIV/NLT/Telugu)
+                if (!version.isDownloaded() && (version.getId().equals("niv") || version.getId().equals("nlt")
+                        || version.getId().equals("tel"))) {
                     showSmartDownloadDialog(version);
                 } else {
                     if (listener != null) {
