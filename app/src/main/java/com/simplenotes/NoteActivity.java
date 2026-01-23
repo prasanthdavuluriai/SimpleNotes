@@ -58,6 +58,7 @@ public class NoteActivity extends AppCompatActivity {
 
     // Rich Text Toolbar
     private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
+    private int manualOverridePosition = -1; // [NEW] Track where user manually toggled styles
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,6 +136,16 @@ public class NoteActivity extends AppCompatActivity {
             return;
         if (position < 0)
             return;
+
+        // [NEW] If user manually toggled styles at this exact position, DO NOT override
+        // them
+        // This prevents the auto-detector from immediately undoing the user's click
+        if (position == manualOverridePosition) {
+            return;
+        } else {
+            // Cursor moved, so we are back to auto-sensing mode
+            manualOverridePosition = -1;
+        }
 
         // Reset all first (unless we want 'additive' inheritance, but usually cursor
         // status is absolute)
@@ -802,6 +813,7 @@ public class NoteActivity extends AppCompatActivity {
                 toggleStyle(Typeface.BOLD);
             else {
                 pendingBold = !pendingBold;
+                manualOverridePosition = editTextContent.getSelectionStart(); // Lock this choice
                 updateToolbarUI();
             }
         });
@@ -810,6 +822,7 @@ public class NoteActivity extends AppCompatActivity {
                 toggleStyle(Typeface.ITALIC);
             else {
                 pendingItalic = !pendingItalic;
+                manualOverridePosition = editTextContent.getSelectionStart(); // Lock this choice
                 updateToolbarUI();
             }
         });
@@ -818,6 +831,7 @@ public class NoteActivity extends AppCompatActivity {
                 toggleUnderline();
             else {
                 pendingUnderline = !pendingUnderline;
+                manualOverridePosition = editTextContent.getSelectionStart(); // Lock this choice
                 updateToolbarUI();
             }
         });
