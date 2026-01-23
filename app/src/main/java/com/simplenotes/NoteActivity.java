@@ -311,21 +311,52 @@ public class NoteActivity extends AppCompatActivity {
     private void removeStyle(android.text.Editable editable, int start, int end, int style) {
         StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
         for (StyleSpan span : spans) {
-            if (span.getStyle() == style)
+            if (span.getStyle() == style) {
+                int spanStart = editable.getSpanStart(span);
+                int spanEnd = editable.getSpanEnd(span);
                 editable.removeSpan(span);
+
+                if (spanStart < start) {
+                    editable.setSpan(new StyleSpan(style), spanStart, start, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+                if (spanEnd > end) {
+                    editable.setSpan(new StyleSpan(style), end, spanEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
         }
     }
 
     private void removeUnderline(android.text.Editable editable, int start, int end) {
         UnderlineSpan[] spans = editable.getSpans(start, end, UnderlineSpan.class);
-        for (UnderlineSpan span : spans)
+        for (UnderlineSpan span : spans) {
+            int spanStart = editable.getSpanStart(span);
+            int spanEnd = editable.getSpanEnd(span);
             editable.removeSpan(span);
+
+            if (spanStart < start) {
+                editable.setSpan(new UnderlineSpan(), spanStart, start, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            if (spanEnd > end) {
+                editable.setSpan(new UnderlineSpan(), end, spanEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
     }
 
     private void removeTextColor(android.text.Editable editable, int start, int end) {
         ForegroundColorSpan[] spans = editable.getSpans(start, end, ForegroundColorSpan.class);
-        for (ForegroundColorSpan span : spans)
+        for (ForegroundColorSpan span : spans) {
+            int spanStart = editable.getSpanStart(span);
+            int spanEnd = editable.getSpanEnd(span);
+            int color = span.getForegroundColor();
             editable.removeSpan(span);
+
+            if (spanStart < start) {
+                editable.setSpan(new ForegroundColorSpan(color), spanStart, start, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            if (spanEnd > end) {
+                editable.setSpan(new ForegroundColorSpan(color), end, spanEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
     }
 
     // reset pending?
