@@ -60,6 +60,10 @@ public class NoteActivity extends AppCompatActivity {
     private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
     private int manualOverridePosition = -1; // [NEW] Track where user manually toggled styles
 
+    // Text Watcher State
+    private int lastChangeStart = 0;
+    private int lastChangeCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -217,14 +221,28 @@ public class NoteActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (isTyping || count == 0)
-                    return; // Ignore deletions or internal changes
-
-                applyPendingStyles(start, count);
+                if (isTyping)
+                    return;
+                lastChangeStart = start;
+                lastChangeCount = count;
             }
 
             @Override
             public void afterTextChanged(android.text.Editable s) {
+                if (isTyping)
+                    return;
+
+                // Apply styles for insertions
+                if (lastChangeCount > 0) {
+                    applyPendingStyles(lastChangeStart, lastChangeCount);
+                    lastChangeCount = 0; // Reset
+                }
+
+                // Previously existing logic (Bible Fetch, etc)
+                // NOTE: We need to merge this with setupMagicFetch or move it?
+                // Wait, setupMagicFetch adds *another* listener.
+                // That listener runs separately.
+                // This listener is DEDICATED to sticky formatting.
             }
         });
     }
