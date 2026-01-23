@@ -84,15 +84,22 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
                     outRect.bottom = viewHeight;
                 }
 
-                // 2. Top Boundary Logic (Force DOWN)
-                // If selection is near the top of the view (e.g. first line), user wants menu
-                // INSIDE the view.
-                // We artificially extend the rect to the Top of the Screen (-screenY).
-                // This makes the system think there is NO SPACE above, forcing it to render
-                // BELOW the selection.
-                // Threshold: 50px (approx first line height)
-                if (outRect.top < 50) {
-                    outRect.top = -screenY;
+                // 2. Top Boundary Logic (Force "Internal" Positioning)
+                // The system often refuses to render "Below" the selection, preferring "Above".
+                // Instead of trying to force a "Below" flip (which failed), we offset the
+                // anchor DOWN.
+                // If selection is at the top (< 150), we say it starts at 150.
+                // The system will render the menu ABOVE 150 (e.g. at 100).
+                // This keeps the menu INSIDE the view (Below the Red Line), protecting the
+                // header.
+                // Side effect: It covers the first few lines of text, but strictly obeys the
+                // boundary.
+                if (outRect.top < 150) {
+                    outRect.top = 150;
+                    // Ensure bottom is valid relative to new top
+                    if (outRect.bottom < outRect.top) {
+                        outRect.bottom = outRect.top + 1;
+                    }
                 }
             }
         };
