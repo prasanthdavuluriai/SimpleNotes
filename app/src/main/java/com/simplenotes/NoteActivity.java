@@ -71,7 +71,6 @@ public class NoteActivity extends AppCompatActivity {
 
         initViews();
         initializeHighlightColors(); // Initialize colors
-        setupSelectionMenu(); // Custom Selection Menu
 
         if (savedInstanceState != null && savedInstanceState.containsKey("current_note")) {
             currentNote = (Note) savedInstanceState.getSerializable("current_note");
@@ -663,36 +662,6 @@ public class NoteActivity extends AppCompatActivity {
                 ContextCompat.getColor(this, R.color.text_pink),
                 ContextCompat.getColor(this, R.color.text_brown)
         };
-    }
-
-    private void setupSelectionMenu() {
-        editTextContent.setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
-            @Override
-            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
-                // Add "Highlight" option
-                menu.add(0, 101, 0, "Highlight")
-                        .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
-                return true;
-            }
-
-            @Override
-            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
-                return false;
-            }
-
-            @Override
-            public boolean onActionItemClicked(android.view.ActionMode mode, MenuItem item) {
-                if (item.getItemId() == 101) {
-                    showHighlightColorPicker(mode);
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public void onDestroyActionMode(android.view.ActionMode mode) {
-            }
-        });
     }
 
     private void showHighlightColorPicker(android.view.ActionMode mode) {
