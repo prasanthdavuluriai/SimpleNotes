@@ -35,4 +35,12 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
             selectionListener.onSelectionChanged(selStart, selEnd);
         }
     }
+
+    @Override
+    public android.view.ActionMode startActionMode(android.view.ActionMode.Callback callback, int type) {
+        // Force the Action Mode to be at the TOP (Primary) instead of Floating.
+        // This prevents the menu from covering the formatting toolbar which sits just
+        // above the text.
+        return super.startActionMode(callback, android.view.ActionMode.TYPE_PRIMARY);
+    }
 }
