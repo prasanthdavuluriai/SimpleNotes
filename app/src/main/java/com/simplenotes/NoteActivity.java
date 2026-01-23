@@ -30,7 +30,7 @@ import android.graphics.Color;
 
 public class NoteActivity extends AppCompatActivity {
     private TextInputEditText editTextTitle;
-    private androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView editTextContent;
+    private RichEditText editTextContent;
 
     // Version Switcher
     private android.widget.TextView textViewVersion;
@@ -113,6 +113,85 @@ public class NoteActivity extends AppCompatActivity {
 
         setupFormattingButtons();
         setupStickyFormatting();
+        setupSelectionListener();
+    }
+
+    private void setupSelectionListener() {
+        editTextContent.setOnSelectionChangedListener((start, end) -> {
+            if (start == end) { // Cursor move (no selection)
+                checkStylesAtCursor(start);
+            } else {
+                // If text is selected, maybe update UI to show common style?
+                // For now, let's just focus on cursor for sticky behavior
+                // Or maybe check start position?
+                checkStylesAtCursor(start);
+            }
+        });
+    }
+
+    private void checkStylesAtCursor(int position) {
+        android.text.Editable editable = editTextContent.getText();
+        if (editable == null)
+            return;
+        if (position < 0)
+            return;
+
+        // Reset all first (unless we want 'additive' inheritance, but usually cursor
+        // status is absolute)
+        // But wait, if user JUST toggled Bold, we don't want to clear it if they
+        // haven't typed yet.
+        // Issue: Toggling Bold doesn't move cursor. So this won't fire.
+        // Issue: Typing 'A' moves cursor. 'A' has style. listener fires. detects bold.
+        // sets pending=true. OK.
+        // Issue: Moving cursor to plain text. listener fires. detects nothing. sets
+        // pending=false. OK.
+
+        // So we can aggressively set flags based on spans.
+
+        pendingBold = false;
+        pendingItalic = false;
+        pendingUnderline = false;
+        pendingTextColor = null;
+        pendingHighlightColor = null;
+
+        if (position > 0) {
+            // Check character BEFORE cursor (inheritance usually comes from prev char)
+            // Or check span covering the point.
+            // Spans are usually Start <= pos < End (Exclusive) or <= End (Inclusive)
+
+            Object[] spans = editable.getSpans(position - 1, position, Object.class);
+
+            for (Object span : spans) {
+                if (span instanceof StyleSpan) {
+                    int style = ((StyleSpan) span).getStyle();
+                    if ((style & Typeface.BOLD) != 0)
+                        pendingBold = true;
+                    if ((style & Typeface.ITALIC) != 0)
+                        pendingItalic = true;
+                }
+                if (span instanceof UnderlineSpan) {
+                    pendingUnderline = true;
+                }
+                if (span instanceof ForegroundColorSpan && !(span instanceof AutoColorSpan)) {
+                    pendingTextColor = ((ForegroundColorSpan) span).getForegroundColor();
+                }
+                if (span instanceof RoundedHighlighterSpan) {
+                    // Need to find the color index
+                    // This span stores direct color, not index.
+                    // But we only have buttons for specific indices.
+                    // Let's reverse lookup the color?
+                    int color = ((RoundedHighlighterSpan) span).getBackgroundColor();
+                    for (int i = 0; i < highlightColors.length; i++) {
+                        if (highlightColors[i] == color) {
+                            pendingHighlightColor = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        updateToolbarUI();
     }
 
     private void setupStickyFormatting() {
@@ -293,7 +372,7 @@ public class NoteActivity extends AppCompatActivity {
         bibleVersions.put("Latin Vulgate", "clementine");
         bibleVersions.put("Portuguese Almeida", "almeida");
         bibleVersions.put("Romanian Corrected", "rccv");
-        bibleVersions.put("Telugu", "tel");
+        bibleVersions.put("Standard Telugu Bible (Old Version)", "tel");
     }
 
     private void setupVersionSwitcher() {

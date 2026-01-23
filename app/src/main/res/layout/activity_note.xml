@@ -137,7 +137,7 @@
         app:expandedHintEnabled="false"
         app:boxBackgroundMode="outline">
 
-        <androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView
+        <com.simplenotes.RichEditText
             android:id="@+id/editTextContent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

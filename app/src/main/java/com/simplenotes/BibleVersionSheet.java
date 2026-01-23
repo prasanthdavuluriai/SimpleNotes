@@ -89,7 +89,7 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
         safeInsert(dao, new BibleVersion("ru_synodal", "Russian (Synodal)", false));
         safeInsert(dao, new BibleVersion("es_rvr", "Spanish (Reina Valera)", false));
         safeInsert(dao, new BibleVersion("vi_vietnamese", "Vietnamese", false));
-        safeInsert(dao, new BibleVersion("tel", "Telugu", false));
+        safeInsert(dao, new BibleVersion("tel", "Standard Telugu Bible (Old Version)", false));
 
         // Keep existing ones if they were there
         safeInsert(dao, new BibleVersion("web", "World English Bible", false));
