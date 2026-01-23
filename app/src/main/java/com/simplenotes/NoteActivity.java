@@ -141,6 +141,11 @@ public class NoteActivity extends AppCompatActivity {
         if (position < 0)
             return;
 
+        // Prevent race conditions: Do not check styles while we are programmatically
+        // modifying text
+        if (isTyping)
+            return;
+
         // [NEW] If user manually toggled styles at this exact position, DO NOT override
         // them
         // This prevents the auto-detector from immediately undoing the user's click
@@ -262,8 +267,8 @@ public class NoteActivity extends AppCompatActivity {
                 String wrapped = "\u200C{" + pendingHighlightColor + "}" + newText + "\u200D";
                 editable.replace(start, end, wrapped);
 
-                // Re-calculate end because text grew
-                // marker len = 1 + 1 + 1 (min) + 1 + 1 = ~5 chars
+                // Update count to reflect the new length of the inserted text + markers
+                count = wrapped.length();
             }
 
             // 2. Standard Styles (Apply to the range)
