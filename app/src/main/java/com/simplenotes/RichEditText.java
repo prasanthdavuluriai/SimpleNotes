@@ -38,9 +38,50 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
 
     @Override
     public android.view.ActionMode startActionMode(android.view.ActionMode.Callback callback, int type) {
-        // Force the Action Mode to be at the TOP (Primary) instead of Floating.
-        // This prevents the menu from covering the formatting toolbar which sits just
-        // above the text.
-        return super.startActionMode(callback, android.view.ActionMode.TYPE_PRIMARY);
+        // User prefers Floating mode, but we need to prevent it from overlapping the
+        // bottom toolbar.
+        // We wrap the callback to override onGetContentRect.
+        android.view.ActionMode.Callback2 wrappedCallback = new android.view.ActionMode.Callback2() {
+            @Override
+            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                return callback.onCreateActionMode(mode, menu);
+            }
+
+            @Override
+            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                return callback.onPrepareActionMode(mode, menu);
+            }
+
+            @Override
+            public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                return callback.onActionItemClicked(mode, item);
+            }
+
+            @Override
+            public void onDestroyActionMode(android.view.ActionMode mode) {
+                callback.onDestroyActionMode(mode);
+            }
+
+            @Override
+            public void onGetContentRect(android.view.ActionMode mode, android.view.View view,
+                    android.graphics.Rect outRect) {
+                if (callback instanceof android.view.ActionMode.Callback2) {
+                    ((android.view.ActionMode.Callback2) callback).onGetContentRect(mode, view, outRect);
+                } else {
+                    super.onGetContentRect(mode, view, outRect);
+                }
+
+                // Hack: Artificially extend the "content rect" to the bottom of the view.
+                // This tells the system "The content I selected goes all the way to the
+                // bottom",
+                // so the system is forced to display the Floating Menu ABOVE the selection.
+                // This prevents it from appearing below the text and overlapping our bottom
+                // toolbar.
+                // We add a safe buffer (e.g., 300px) to ensure it clears the toolbar area.
+                outRect.bottom += 300;
+            }
+        };
+
+        return super.startActionMode(wrappedCallback, type);
     }
 }
