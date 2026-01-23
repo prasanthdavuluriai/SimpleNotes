@@ -72,6 +72,11 @@ public class BibleDownloader {
     }
 
     public static void downloadVersion(Context context, String versionId, DownloadCallback callback) {
+        if (versionId.equals("tel")) {
+            downloadTelugu(context, callback);
+            return;
+        }
+
         String url = VERSION_URLS.get(versionId);
         if (url == null) {
             callback.onFailure("Version not supported for offline download: " + versionId);
@@ -180,6 +185,98 @@ public class BibleDownloader {
             }
         }).start();
     }
+
+    private static void downloadTelugu(Context context, DownloadCallback callback) {
+        new Thread(() -> {
+            try {
+                OkHttpClient client = new OkHttpClient();
+                Gson gson = new Gson();
+                List<Verse> allVerses = new ArrayList<>();
+                AppDatabase db = AppDatabase.getDatabase(context);
+
+                int successCount = 0;
+                // Base URL for aruljohn/Bible-telugu
+                String baseUrl = "https://raw.githubusercontent.com/aruljohn/Bible-telugu/master/";
+
+                for (String bookName : com.simplenotes.BibleData.BOOKS) {
+                    // Handle URL encoding for filenames with spaces (e.g. "1 Samuel" ->
+                    // "1%20Samuel")
+                    // URLEncoder encodes spaces as '+' which might fail on raw.github, so we
+                    // manually swap
+                    String encodedName = bookName.replace(" ", "%20");
+                    String url = baseUrl + encodedName + ".json";
+
+                    Request request = new Request.Builder().url(url).build();
+                    try (Response response = client.newCall(request).execute()) {
+                        if (!response.isSuccessful() || response.body() == null) {
+                            System.err.println("Failed to download book: " + bookName);
+                            continue; // Skip failed book but try others (or could fail hard)
+                        }
+
+                        String jsonData = response.body().string();
+                        // Parse individual book structure
+                        TeluguBookResponse bookData = gson.fromJson(jsonData, TeluguBookResponse.class);
+
+                        if (bookData != null && bookData.chapters != null) {
+                            for (TeluguChapter chap : bookData.chapters) {
+                                if (chap.verses == null)
+                                    continue;
+                                int chapterNum = Integer.parseInt(chap.chapter);
+
+                                for (TeluguVerse v : chap.verses) {
+                                    int verseNum = Integer.parseInt(v.verse);
+                                    allVerses.add(new Verse(
+                                            "tel",
+                                            bookName, // Use canonical name from BibleData
+                                            chapterNum,
+                                            verseNum,
+                                            v.text));
+                                }
+                            }
+                            successCount++;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (successCount == 0) {
+                    throw new IOException("Failed to download any Telugu books.");
+                }
+
+                // Insert into DB in one transaction
+                db.bibleDao().insertVerses(allVerses);
+                db.bibleDao().markVersionDownloaded("tel");
+
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(callback::onSuccess);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                new android.os.Handler(android.os.Looper.getMainLooper())
+                        .post(() -> callback.onFailure(e.getMessage()));
+            }
+        }).start();
+    }
+
+    // --- Telugu JSON Mapping Classes ---
+    private static class TeluguBookResponse {
+        // "book": { "english": "Genesis", ... }
+        // We don't strictly need the book object if we use our loop's bookName,
+        // but removing it might break GSON matching if not careful.
+        // GSON ignores missing fields, so we just match "chapters".
+        List<TeluguChapter> chapters;
+    }
+
+    private static class TeluguChapter {
+        String chapter;
+        List<TeluguVerse> verses;
+    }
+
+    private static class TeluguVerse {
+        String verse;
+        String text;
+    }
+    // -----------------------------------
 
     // JSON Mapping Classes
     private static class BookJson {
