@@ -764,54 +764,59 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void replaceTextWithVerse(int start, int end, String reference, String verseText) {
-        android.text.Editable editable = editTextContent.getText();
+        isTyping = true;
+        try {
+            android.text.Editable editable = editTextContent.getText();
 
-        // Safety check indices
-        if (start < 0 || end > editable.length() || start > end) {
-            return;
+            // Safety check indices
+            if (start < 0 || end > editable.length() || start > end) {
+                return;
+            }
+
+            SpannableStringBuilder ssb = new SpannableStringBuilder();
+
+            if (!reference.isEmpty()) {
+                // Format: Reference (Newline) "Verse"
+                ssb.append(reference).append("\n");
+
+                // Invisible marker to identify Bible verses for styling persistence
+                String marker = "\u200B";
+                String formattedVerse = marker + "\"" + verseText + "\"" + marker;
+                ssb.append(formattedVerse);
+            } else {
+                // Pre-formatted block (Multi-verse)
+                ssb.append(verseText);
+            }
+
+            // Apply Pending Styles to the new content (Sticky Formatting for Magic Fetch)
+            if (pendingBold)
+                ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, ssb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingItalic)
+                ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), 0, ssb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingUnderline)
+                ssb.setSpan(new android.text.style.UnderlineSpan(), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingTextColor != null)
+                ssb.setSpan(new android.text.style.ForegroundColorSpan(pendingTextColor), 0, ssb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (pendingHighlightColor != null) {
+                // Highlighting is tricky because it usually involves markers.
+                // For now, let's skip manual marker insertion here and rely on applyStyling if
+                // we set the span?
+                // Actually, sticky highlight inserts markers.
+                // But here we are inserting a VERSE which relies on \u200B markers.
+                // Nesting markers might be complex. Let's just stick to font styles for now.
+            }
+
+            // Replace the trigger characters
+            editable.replace(start, end, ssb);
+
+            // Re-apply styling (will handle the new content)
+            applyVerseStyling();
+        } finally {
+            isTyping = false;
         }
-
-        SpannableStringBuilder ssb = new SpannableStringBuilder();
-
-        if (!reference.isEmpty()) {
-            // Format: Reference (Newline) "Verse"
-            ssb.append(reference).append("\n");
-
-            // Invisible marker to identify Bible verses for styling persistence
-            String marker = "\u200B";
-            String formattedVerse = marker + "\"" + verseText + "\"" + marker;
-            ssb.append(formattedVerse);
-        } else {
-            // Pre-formatted block (Multi-verse)
-            ssb.append(verseText);
-        }
-
-        // Apply Pending Styles to the new content (Sticky Formatting for Magic Fetch)
-        if (pendingBold)
-            ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, ssb.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if (pendingItalic)
-            ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), 0, ssb.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if (pendingUnderline)
-            ssb.setSpan(new android.text.style.UnderlineSpan(), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if (pendingTextColor != null)
-            ssb.setSpan(new android.text.style.ForegroundColorSpan(pendingTextColor), 0, ssb.length(),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        if (pendingHighlightColor != null) {
-            // Highlighting is tricky because it usually involves markers.
-            // For now, let's skip manual marker insertion here and rely on applyStyling if
-            // we set the span?
-            // Actually, sticky highlight inserts markers.
-            // But here we are inserting a VERSE which relies on \u200B markers.
-            // Nesting markers might be complex. Let's just stick to font styles for now.
-        }
-
-        // Replace the trigger characters
-        editable.replace(start, end, ssb);
-
-        // Re-apply styling (will handle the new content)
-        applyVerseStyling();
     }
 
     private void appendVerseToContentFallback(String verseText) {
@@ -1064,126 +1069,129 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void applyHighlight(int colorIndex, int start, int end) {
-        android.text.Editable text = editTextContent.getText();
-        String str = text.toString();
+        isTyping = true;
+        try {
+            android.text.Editable text = editTextContent.getText();
+            String str = text.toString();
 
-        // Robust Smart Expansion using Regex
-        // 1. Expand START to include preceding OR overlapping marker \u200C{digits}
-        // Scan for all markers. If start falls INSIDE or AT THE END of a marker, expand
-        // to marker start.
-        java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
-        while (startMatcher.find()) {
-            int mStart = startMatcher.start();
-            int mEnd = startMatcher.end();
-            // If selection starts inside the marker (mStart < start < mEnd)
-            // OR exactly at the end (start == mEnd)
-            if (start > mStart && start <= mEnd) {
-                start = mStart;
-                break;
+            // Robust Smart Expansion using Regex
+            // 1. Expand START to include preceding OR overlapping marker \u200C{digits}
+            // Scan for all markers. If start falls INSIDE or AT THE END of a marker, expand
+            // to marker start.
+            java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
+            while (startMatcher.find()) {
+                int mStart = startMatcher.start();
+                int mEnd = startMatcher.end();
+                // If selection starts inside the marker (mStart < start < mEnd)
+                // OR exactly at the end (start == mEnd)
+                if (start > mStart && start <= mEnd) {
+                    start = mStart;
+                    break;
+                }
             }
-        }
 
-        // 2. Expand END to include succeeding marker \u200D (or legacy \u200C)
-        // Check immediate char at 'end'
-        if (end < str.length()) {
-            char c = str.charAt(end);
-            if (c == '\u200D' || c == '\u200C') {
-                end++;
+            // 2. Expand END to include succeeding marker \u200D (or legacy \u200C)
+            // Check immediate char at 'end'
+            if (end < str.length()) {
+                char c = str.charAt(end);
+                if (c == '\u200D' || c == '\u200C') {
+                    end++;
+                }
             }
-        }
 
-        if (start < 0 || end < 0 || start >= end)
-            return;
+            if (start < 0 || end < 0 || start >= end)
+                return;
 
-        // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
-        // while stripping out old markers.
-        android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
-                text.subSequence(start, end));
+            // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
+            // while stripping out old markers.
+            android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
+                    text.subSequence(start, end));
 
-        // Remove existing markers patterns from the content to avoid nesting
-        // We must do this carefully to shift spans correctly.
-        // Pattern: \u200C, \u200D, or {\d+}
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
-        java.util.regex.Matcher matcher = pattern.matcher(content);
+            // Remove existing markers patterns from the content
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
+            java.util.regex.Matcher matcher = pattern.matcher(content);
 
-        // Iterate backwards or use a loop that resets to correctly handle shifting
-        // indices?
-        // Simpler: Find one formed match, delete it, reset matcher.
-        while (matcher.find()) {
-            content.delete(matcher.start(), matcher.end());
-            matcher.reset(content); // Re-scan modified buffer
-        }
-
-        // Also remove any existing RoundedHighlighterSpan or HiddenSpan from the
-        // selection
-        // so they don't get double-applied or stuck.
-        Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
-        for (Object span : oldSpans) {
-            if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
-                content.removeSpan(span);
+            while (matcher.find()) {
+                content.delete(matcher.start(), matcher.end());
+                matcher.reset(content);
             }
+
+            // Also remove any existing RoundedHighlighterSpan or HiddenSpan
+            Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
+            for (Object span : oldSpans) {
+                if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
+                    content.removeSpan(span);
+                }
+            }
+
+            // Construct final wrapped text
+            android.text.SpannableStringBuilder finalSSB = new android.text.SpannableStringBuilder();
+            finalSSB.append("\u200C{" + colorIndex + "}");
+            finalSSB.append(content);
+            finalSSB.append("\u200D");
+
+            text.replace(start, end, finalSSB);
+            applyStyling();
+        } finally {
+            isTyping = false;
         }
-
-        // Construct final wrapped text
-        android.text.SpannableStringBuilder finalSSB = new android.text.SpannableStringBuilder();
-        finalSSB.append("\u200C{" + colorIndex + "}");
-        finalSSB.append(content);
-        finalSSB.append("\u200D");
-
-        text.replace(start, end, finalSSB);
-        applyStyling();
     }
 
     private void removeHighlight(int start, int end) {
-        android.text.Editable text = editTextContent.getText();
-        String str = text.toString();
+        isTyping = true;
+        try {
+            android.text.Editable text = editTextContent.getText();
+            String str = text.toString();
 
-        // Mirror START expansion
-        java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
-        while (startMatcher.find()) {
-            int mStart = startMatcher.start();
-            int mEnd = startMatcher.end();
-            if (start > mStart && start <= mEnd) {
-                start = mStart;
-                break;
+            // Mirror START expansion
+            java.util.regex.Matcher startMatcher = java.util.regex.Pattern.compile("\u200C\\{\\d+\\}").matcher(str);
+            while (startMatcher.find()) {
+                int mStart = startMatcher.start();
+                int mEnd = startMatcher.end();
+                if (start > mStart && start <= mEnd) {
+                    start = mStart;
+                    break;
+                }
             }
-        }
 
-        // Mirror END expansion
-        if (end < str.length()) {
-            char c = str.charAt(end);
-            if (c == '\u200D' || c == '\u200C') {
-                end++;
+            // Mirror END expansion
+            if (end < str.length()) {
+                char c = str.charAt(end);
+                if (c == '\u200D' || c == '\u200C') {
+                    end++;
+                }
             }
-        }
 
-        if (start < 0 || end < 0 || start >= end)
-            return;
+            if (start < 0 || end < 0 || start >= end)
+                return;
 
-        // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
-        // while stripping out old markers.
-        android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
-                text.subSequence(start, end));
+            // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
+            // while stripping out old markers.
+            android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
+                    text.subSequence(start, end));
 
-        // Remove existing markers patterns from the content
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
-        java.util.regex.Matcher matcher = pattern.matcher(content);
+            // Remove existing markers patterns from the content
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
+            java.util.regex.Matcher matcher = pattern.matcher(content);
 
-        while (matcher.find()) {
-            content.delete(matcher.start(), matcher.end());
-            matcher.reset(content);
-        }
-
-        // Also remove any existing RoundedHighlighterSpan or HiddenSpan
-        Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
-        for (Object span : oldSpans) {
-            if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
-                content.removeSpan(span);
+            while (matcher.find()) {
+                content.delete(matcher.start(), matcher.end());
+                matcher.reset(content);
             }
-        }
 
-        text.replace(start, end, content);
-        applyStyling();
+            // Also remove any existing RoundedHighlighterSpan or HiddenSpan
+            Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
+            for (Object span : oldSpans) {
+                if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
+                    content.removeSpan(span);
+                }
+            }
+
+            text.replace(start, end, content);
+            applyStyling();
+        } finally {
+            isTyping = false;
+        }
     }
 
     private void applyStyling() {
