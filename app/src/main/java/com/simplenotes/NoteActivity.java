@@ -32,9 +32,6 @@ public class NoteActivity extends AppCompatActivity {
     private TextInputEditText editTextTitle;
     private androidx.appcompat.widget.AppCompatMultiAutoCompleteTextView editTextContent;
 
-    private TextInputLayout layoutTitle;
-    private TextInputLayout layoutContent;
-
     // Version Switcher
     private android.widget.TextView textViewVersion;
     private android.widget.ImageButton buttonVersion;
@@ -103,9 +100,6 @@ public class NoteActivity extends AppCompatActivity {
         if (editTextContent.getText().length() == 0) {
             editTextContent.setHint(R.string.magic_fetch_guide);
         }
-
-        layoutTitle = findViewById(R.id.layoutTitle);
-        layoutContent = findViewById(R.id.layoutContent);
 
         textViewVersion = findViewById(R.id.textViewVersion);
         buttonVersion = findViewById(R.id.buttonVersion);
@@ -287,7 +281,7 @@ public class NoteActivity extends AppCompatActivity {
         bibleVersions.put("Bible in Basic English", "bbe");
         bibleVersions.put("Darby Bible", "darby");
         bibleVersions.put("Douay-Rheims 1899", "dra");
-        bibleVersions.put("Douay-Rheims 1899", "dra");
+
         bibleVersions.put("King James Version", "kjv");
         bibleVersions.put("New International Version", "niv");
         bibleVersions.put("New Living Translation", "nlt");
@@ -299,6 +293,7 @@ public class NoteActivity extends AppCompatActivity {
         bibleVersions.put("Latin Vulgate", "clementine");
         bibleVersions.put("Portuguese Almeida", "almeida");
         bibleVersions.put("Romanian Corrected", "rccv");
+        bibleVersions.put("Telugu", "tel");
     }
 
     private void setupVersionSwitcher() {
@@ -763,27 +758,6 @@ public class NoteActivity extends AppCompatActivity {
             // Sticky Mode
             // Show picker to SET pending color
             showStickyHighlightPicker();
-        }
-    }
-
-    private void selectCurrentWord() {
-        int cursor = editTextContent.getSelectionStart();
-        if (cursor < 0)
-            return;
-        String text = editTextContent.getText().toString();
-        if (text.isEmpty())
-            return;
-
-        int start = cursor;
-        int end = cursor;
-
-        while (start > 0 && start <= text.length() && Character.isLetterOrDigit(text.charAt(start - 1)))
-            start--;
-        while (end < text.length() && Character.isLetterOrDigit(text.charAt(end)))
-            end++;
-
-        if (start < end) {
-            editTextContent.setSelection(start, end);
         }
     }
 
