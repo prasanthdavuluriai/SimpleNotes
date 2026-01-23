@@ -220,11 +220,7 @@ public class NoteActivity extends AppCompatActivity {
                 if (isTyping || count == 0)
                     return; // Ignore deletions or internal changes
 
-                // Only apply if we have pending styles
-                if (pendingBold || pendingItalic || pendingUnderline || pendingTextColor != null
-                        || pendingHighlightColor != null) {
-                    applyPendingStyles(start, count);
-                }
+                applyPendingStyles(start, count);
             }
 
             @Override
@@ -285,20 +281,51 @@ public class NoteActivity extends AppCompatActivity {
 
             if (pendingBold)
                 editable.setSpan(new StyleSpan(Typeface.BOLD), start, start + count, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            else
+                removeStyle(editable, start, start + count, Typeface.BOLD);
+
             if (pendingItalic)
                 editable.setSpan(new StyleSpan(Typeface.ITALIC), start, start + count,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            else
+                removeStyle(editable, start, start + count, Typeface.ITALIC);
+
             if (pendingUnderline)
                 editable.setSpan(new UnderlineSpan(), start, start + count, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            else
+                removeUnderline(editable, start, start + count);
+
             if (pendingTextColor != null)
                 editable.setSpan(new ForegroundColorSpan(pendingTextColor), start, start + count,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            else
+                removeTextColor(editable, start, start + count);
 
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             isTyping = false;
         }
+    }
+
+    private void removeStyle(android.text.Editable editable, int start, int end, int style) {
+        StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == style)
+                editable.removeSpan(span);
+        }
+    }
+
+    private void removeUnderline(android.text.Editable editable, int start, int end) {
+        UnderlineSpan[] spans = editable.getSpans(start, end, UnderlineSpan.class);
+        for (UnderlineSpan span : spans)
+            editable.removeSpan(span);
+    }
+
+    private void removeTextColor(android.text.Editable editable, int start, int end) {
+        ForegroundColorSpan[] spans = editable.getSpans(start, end, ForegroundColorSpan.class);
+        for (ForegroundColorSpan span : spans)
+            editable.removeSpan(span);
     }
 
     // reset pending?
