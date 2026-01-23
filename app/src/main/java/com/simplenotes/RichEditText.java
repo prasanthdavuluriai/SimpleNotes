@@ -71,14 +71,24 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
                     super.onGetContentRect(mode, view, outRect);
                 }
 
-                // Hack: Artificially extend the "content rect" to the bottom of the view.
-                // This tells the system "The content I selected goes all the way to the
-                // bottom",
-                // so the system is forced to display the Floating Menu ABOVE the selection.
-                // This prevents it from appearing below the text and overlapping our bottom
+                // Smart Positioning:
+                // Only modify the rect if the selection is near the bottom of the view.
+                // This prevents the menu from appearing far below the text when checking
+                // middle-screen content.
+                // We define a threshold (e.g., 200px) that represents the danger zone near the
                 // toolbar.
-                // We add a safe buffer (e.g., 300px) to ensure it clears the toolbar area.
-                outRect.bottom += 300;
+                int viewHeight = view.getHeight();
+                int threshold = 200;
+
+                // If the bottom of the selection is within the threshold distance of the view
+                // bottom...
+                if (outRect.bottom > viewHeight - threshold) {
+                    // ...we extend the rect to the very bottom of the view.
+                    // This tells the system "There is no usable space below this selection inside
+                    // the view",
+                    // effectively forcing it to render the menu ABOVE the text.
+                    outRect.bottom = viewHeight;
+                }
             }
         };
 
