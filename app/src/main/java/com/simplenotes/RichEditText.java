@@ -71,23 +71,28 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
                     super.onGetContentRect(mode, view, outRect);
                 }
 
-                // Smart Positioning:
-                // Only modify the rect if the selection is near the bottom of the view.
-                // This prevents the menu from appearing far below the text when checking
-                // middle-screen content.
-                // We define a threshold (e.g., 200px) that represents the danger zone near the
-                // toolbar.
                 int viewHeight = view.getHeight();
-                int threshold = 200;
+                int[] screenPos = new int[2];
+                view.getLocationOnScreen(screenPos);
+                int screenY = screenPos[1];
 
-                // If the bottom of the selection is within the threshold distance of the view
-                // bottom...
-                if (outRect.bottom > viewHeight - threshold) {
-                    // ...we extend the rect to the very bottom of the view.
-                    // This tells the system "There is no usable space below this selection inside
-                    // the view",
-                    // effectively forcing it to render the menu ABOVE the text.
+                // 1. Bottom Boundary Logic (Force UP)
+                // If selection is near the bottom toolbar, extend rect to bottom to force menu
+                // ABOVE.
+                // Threshold: 200px (approx toolbar height + buffer)
+                if (outRect.bottom > viewHeight - 200) {
                     outRect.bottom = viewHeight;
+                }
+
+                // 2. Top Boundary Logic (Force DOWN)
+                // If selection is near the top of the view (e.g. first line), user wants menu
+                // INSIDE the view.
+                // We artificially extend the rect to the Top of the Screen (-screenY).
+                // This makes the system think there is NO SPACE above, forcing it to render
+                // BELOW the selection.
+                // Threshold: 50px (approx first line height)
+                if (outRect.top < 50) {
+                    outRect.top = -screenY;
                 }
             }
         };
