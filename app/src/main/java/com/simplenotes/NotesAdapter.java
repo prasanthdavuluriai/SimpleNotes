@@ -123,7 +123,12 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
 
         public void bind(Note note) {
             textViewTitle.setText(note.getTitle().isEmpty() ? "Untitled" : note.getTitle());
-            textViewContent.setText(note.getContent().isEmpty() ? "No content" : note.getContent());
+            if (note.getContent().isEmpty()) {
+                textViewContent.setText("No content");
+            } else {
+                textViewContent.setText(
+                        android.text.Html.fromHtml(note.getContent(), android.text.Html.FROM_HTML_MODE_LEGACY));
+            }
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault());
             String formattedDate = dateFormat.format(new Date(note.getTimestamp()));
