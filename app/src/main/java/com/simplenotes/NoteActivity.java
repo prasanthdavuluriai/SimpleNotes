@@ -1095,16 +1095,42 @@ public class NoteActivity extends AppCompatActivity {
         if (start < 0 || end < 0 || start >= end)
             return;
 
-        String selected = text.subSequence(start, end).toString();
+        // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
+        // while stripping out old markers.
+        android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
+                text.subSequence(start, end));
 
-        // Remove existing markers inside selection to avoid nesting
-        selected = selected.replace("\u200C", "").replace("\u200D", "");
-        selected = selected.replaceAll("\\{\\d+\\}", "");
+        // Remove existing markers patterns from the content to avoid nesting
+        // We must do this carefully to shift spans correctly.
+        // Pattern: \u200C, \u200D, or {\d+}
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(content);
 
-        // Use \u200D as Distinct Closer
-        String newText = "\u200C{" + colorIndex + "}" + selected + "\u200D";
+        // Iterate backwards or use a loop that resets to correctly handle shifting
+        // indices?
+        // Simpler: Find one formed match, delete it, reset matcher.
+        while (matcher.find()) {
+            content.delete(matcher.start(), matcher.end());
+            matcher.reset(content); // Re-scan modified buffer
+        }
 
-        text.replace(start, end, newText);
+        // Also remove any existing RoundedHighlighterSpan or HiddenSpan from the
+        // selection
+        // so they don't get double-applied or stuck.
+        Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
+        for (Object span : oldSpans) {
+            if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
+                content.removeSpan(span);
+            }
+        }
+
+        // Construct final wrapped text
+        android.text.SpannableStringBuilder finalSSB = new android.text.SpannableStringBuilder();
+        finalSSB.append("\u200C{" + colorIndex + "}");
+        finalSSB.append(content);
+        finalSSB.append("\u200D");
+
+        text.replace(start, end, finalSSB);
         applyStyling();
     }
 
@@ -1134,9 +1160,29 @@ public class NoteActivity extends AppCompatActivity {
         if (start < 0 || end < 0 || start >= end)
             return;
 
-        String selected = text.subSequence(start, end).toString();
-        selected = selected.replace("\u200C", "").replace("\u200D", "").replaceAll("\\{\\d+\\}", "");
-        text.replace(start, end, selected);
+        // Use SpannableStringBuilder to preserve existing spans (Bold, Italic, Color)
+        // while stripping out old markers.
+        android.text.SpannableStringBuilder content = new android.text.SpannableStringBuilder(
+                text.subSequence(start, end));
+
+        // Remove existing markers patterns from the content
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\u200C|\u200D|\\{\\d+\\}");
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+
+        while (matcher.find()) {
+            content.delete(matcher.start(), matcher.end());
+            matcher.reset(content);
+        }
+
+        // Also remove any existing RoundedHighlighterSpan or HiddenSpan
+        Object[] oldSpans = content.getSpans(0, content.length(), Object.class);
+        for (Object span : oldSpans) {
+            if (span instanceof RoundedHighlighterSpan || span instanceof HiddenSpan) {
+                content.removeSpan(span);
+            }
+        }
+
+        text.replace(start, end, content);
         applyStyling();
     }
 
