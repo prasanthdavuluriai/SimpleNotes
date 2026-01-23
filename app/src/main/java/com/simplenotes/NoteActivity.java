@@ -1159,7 +1159,10 @@ public class NoteActivity extends AppCompatActivity {
         }
 
         // 4. Highlight Coloring
-        java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("\u200C\\{(\\d+)\\}(.*?)\u200D",
+        // [FIX] Make leading \u200C optional to handle cases where it might be stripped
+        // or missing
+        // This prevents {0} from being visible if \u200C is lost.
+        java.util.regex.Pattern highlightPattern = java.util.regex.Pattern.compile("(?:\u200C)?\\{(\\d+)\\}(.*?)\u200D",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher highlightMatcher = highlightPattern.matcher(content);
 
