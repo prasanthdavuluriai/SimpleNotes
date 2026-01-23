@@ -20,6 +20,10 @@ public class RoundedHighlighterSpan implements LineBackgroundSpan {
         this.cornerRadius = cornerRadius;
     }
 
+    public int getBackgroundColor() {
+        return backgroundColor;
+    }
+
     @Override
     public void drawBackground(@NonNull Canvas c, @NonNull Paint p,
             int left, int right, int top, int baseline, int bottom,
