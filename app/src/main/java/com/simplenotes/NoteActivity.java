@@ -786,6 +786,27 @@ public class NoteActivity extends AppCompatActivity {
             ssb.append(verseText);
         }
 
+        // Apply Pending Styles to the new content (Sticky Formatting for Magic Fetch)
+        if (pendingBold)
+            ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), 0, ssb.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (pendingItalic)
+            ssb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.ITALIC), 0, ssb.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (pendingUnderline)
+            ssb.setSpan(new android.text.style.UnderlineSpan(), 0, ssb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (pendingTextColor != null)
+            ssb.setSpan(new android.text.style.ForegroundColorSpan(pendingTextColor), 0, ssb.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (pendingHighlightColor != null) {
+            // Highlighting is tricky because it usually involves markers.
+            // For now, let's skip manual marker insertion here and rely on applyStyling if
+            // we set the span?
+            // Actually, sticky highlight inserts markers.
+            // But here we are inserting a VERSE which relies on \u200B markers.
+            // Nesting markers might be complex. Let's just stick to font styles for now.
+        }
+
         // Replace the trigger characters
         editable.replace(start, end, ssb);
 
@@ -1176,9 +1197,23 @@ public class NoteActivity extends AppCompatActivity {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             text.setSpan(new HiddenSpan(), verseMatcher.end(1), verseMatcher.end(),
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            // Use AutoColorSpan to distinguish from user colors
-            text.setSpan(new AutoColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+            // Check if user has already colored this text
+            ForegroundColorSpan[] userColors = text.getSpans(verseMatcher.start(1), verseMatcher.end(1),
+                    ForegroundColorSpan.class);
+            boolean hasUserColor = false;
+            for (ForegroundColorSpan span : userColors) {
+                if (!(span instanceof AutoColorSpan)) {
+                    hasUserColor = true;
+                    break;
+                }
+            }
+
+            // Only apply default gold if no user color is present
+            if (!hasUserColor) {
+                text.setSpan(new AutoColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
         }
 
         // 4. Highlight Coloring
