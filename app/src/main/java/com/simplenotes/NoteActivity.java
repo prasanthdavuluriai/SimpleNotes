@@ -162,6 +162,10 @@ public class NoteActivity extends AppCompatActivity {
             Object[] spans = editable.getSpans(position - 1, position, Object.class);
 
             for (Object span : spans) {
+                int flags = editable.getSpanFlags(span);
+                if ((flags & Spanned.SPAN_COMPOSING) != 0)
+                    continue; // Ignore temporary composing spans
+
                 if (span instanceof StyleSpan) {
                     int style = ((StyleSpan) span).getStyle();
                     if ((style & Typeface.BOLD) != 0)
