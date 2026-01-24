@@ -484,6 +484,8 @@ public class NoteActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(android.text.Editable s) {
+                if (isLoading)
+                    return; // [FIX] Don't trigger magic fetch during load
                 if (s.length() > 0) {
                     int cursorPos = editTextContent.getSelectionStart();
                     if (cursorPos > 0) {
