@@ -1307,6 +1307,7 @@ public class NoteActivity extends AppCompatActivity {
         // [FIX] Clean Highlight Markers from the text before saving
         // We want to save "Clean Text" + "Spans", not "Text with invisible markers"
         // 1. Clone the text so we don't mess up the editor state
+        SpannableStringBuilder ssb = new SpannableStringBuilder(editTextContent.getText());
         SpannableStringBuilder cleanSsb = new SpannableStringBuilder(ssb);
 
         // 2. Remove text covered by HiddenSpan (Markers)
