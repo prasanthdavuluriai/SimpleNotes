@@ -1298,6 +1298,10 @@ public class NoteActivity extends AppCompatActivity {
         // Save as HTML to persist Rich Text
         String content = Html.toHtml(ssb, Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
 
+        // [FIX] Trim the HTML output to prevent accumulation of newlines at start/end
+        // Html.toHtml often adds trailing invalid newlines or <p> tags.
+        content = content.trim();
+
         // Update note data in memory
         currentNote.setTitle(title);
         currentNote.setContent(content);
