@@ -1332,8 +1332,26 @@ public class NoteActivity extends AppCompatActivity {
             return;
 
         String title = editTextTitle.getText().toString().trim();
+
+        // [FIX] Prepare content for HTML conversion
+        // Html.toHtml ignores text inside ReplacementSpans (like HiddenSpan).
+        // We MUST remove HiddenSpans so the hidden markers (which are just text) are
+        // saved.
+        // We also remove AutoColorSpan so we don't hardcode dynamic colors (Gold).
+        SpannableStringBuilder ssb = new SpannableStringBuilder(editTextContent.getText());
+
+        HiddenSpan[] hiddenSpans = ssb.getSpans(0, ssb.length(), HiddenSpan.class);
+        for (HiddenSpan span : hiddenSpans) {
+            ssb.removeSpan(span);
+        }
+
+        AutoColorSpan[] autoSpans = ssb.getSpans(0, ssb.length(), AutoColorSpan.class);
+        for (AutoColorSpan span : autoSpans) {
+            ssb.removeSpan(span);
+        }
+
         // Save as HTML to persist Rich Text
-        String content = Html.toHtml(editTextContent.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
+        String content = Html.toHtml(ssb, Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
 
         // Update note data in memory
         currentNote.setTitle(title);
