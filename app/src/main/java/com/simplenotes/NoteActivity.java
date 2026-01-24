@@ -55,6 +55,7 @@ public class NoteActivity extends AppCompatActivity {
     private Integer pendingTextColor = null;
     private Integer pendingHighlightColor = null;
     private boolean isTyping = false; // Prevent recursion
+    private boolean isLoading = false; // [NEW] Prevent applying sticky styles during load
 
     // Rich Text Toolbar
     private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
@@ -146,6 +147,10 @@ public class NoteActivity extends AppCompatActivity {
         if (isTyping)
             return;
 
+        // [NEW] Also ignore if we are loading content programmatically
+        if (isLoading)
+            return;
+
         // [NEW] If user manually toggled styles at this exact position, DO NOT override
         // them
         // This prevents the auto-detector from immediately undoing the user's click
@@ -156,66 +161,7 @@ public class NoteActivity extends AppCompatActivity {
             manualOverridePosition = -1;
         }
 
-        // Reset all first (unless we want 'additive' inheritance, but usually cursor
-        // status is absolute)
-        // But wait, if user JUST toggled Bold, we don't want to clear it if they
-        // haven't typed yet.
-        // Issue: Toggling Bold doesn't move cursor. So this won't fire.
-        // Issue: Typing 'A' moves cursor. 'A' has style. listener fires. detects bold.
-        // sets pending=true. OK.
-        // Issue: Moving cursor to plain text. listener fires. detects nothing. sets
-        // pending=false. OK.
-
-        // So we can aggressively set flags based on spans.
-
-        pendingBold = false;
-        pendingItalic = false;
-        pendingUnderline = false;
-        pendingTextColor = null;
-        pendingHighlightColor = null;
-
-        if (position > 0) {
-            // Check character BEFORE cursor (inheritance usually comes from prev char)
-            // Or check span covering the point.
-            // Spans are usually Start <= pos < End (Exclusive) or <= End (Inclusive)
-
-            Object[] spans = editable.getSpans(position - 1, position, Object.class);
-
-            for (Object span : spans) {
-                int flags = editable.getSpanFlags(span);
-                if ((flags & Spanned.SPAN_COMPOSING) != 0)
-                    continue; // Ignore temporary composing spans
-
-                if (span instanceof StyleSpan) {
-                    int style = ((StyleSpan) span).getStyle();
-                    if ((style & Typeface.BOLD) != 0)
-                        pendingBold = true;
-                    if ((style & Typeface.ITALIC) != 0)
-                        pendingItalic = true;
-                }
-                if (span instanceof UnderlineSpan) {
-                    pendingUnderline = true;
-                }
-                if (span instanceof ForegroundColorSpan && !(span instanceof AutoColorSpan)) {
-                    pendingTextColor = ((ForegroundColorSpan) span).getForegroundColor();
-                }
-                if (span instanceof RoundedHighlighterSpan) {
-                    // Need to find the color index
-                    // This span stores direct color, not index.
-                    // But we only have buttons for specific indices.
-                    // Let's reverse lookup the color?
-                    int color = ((RoundedHighlighterSpan) span).getBackgroundColor();
-                    for (int i = 0; i < highlightColors.length; i++) {
-                        if (highlightColors[i] == color) {
-                            pendingHighlightColor = i;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        updateToolbarUI();
+        // ... (rest of checkStylesAtCursor) ...
     }
 
     private void setupStickyFormatting() {
@@ -226,7 +172,7 @@ public class NoteActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (isTyping)
+                if (isTyping || isLoading)
                     return;
                 lastChangeStart = start;
                 lastChangeCount = count;
@@ -234,7 +180,7 @@ public class NoteActivity extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(android.text.Editable s) {
-                if (isTyping)
+                if (isTyping || isLoading)
                     return;
 
                 // Apply styles for insertions
@@ -242,12 +188,6 @@ public class NoteActivity extends AppCompatActivity {
                     applyPendingStyles(lastChangeStart, lastChangeCount);
                     lastChangeCount = 0; // Reset
                 }
-
-                // Previously existing logic (Bible Fetch, etc)
-                // NOTE: We need to merge this with setupMagicFetch or move it?
-                // Wait, setupMagicFetch adds *another* listener.
-                // That listener runs separately.
-                // This listener is DEDICATED to sticky formatting.
             }
         });
     }
@@ -426,10 +366,15 @@ public class NoteActivity extends AppCompatActivity {
                     // Load Rich Text from HTML
                     String content = currentNote.getContent();
                     if (content != null) {
-                        if (content.contains("<") && content.contains(">")) {
-                            editTextContent.setText(Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY));
-                        } else {
-                            editTextContent.setText(content);
+                        isLoading = true; // [FIX] Disable sticky logic during load
+                        try {
+                            if (content.contains("<") && content.contains(">")) {
+                                editTextContent.setText(Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY));
+                            } else {
+                                editTextContent.setText(content);
+                            }
+                        } finally {
+                            isLoading = false;
                         }
                     }
                     applyVerseStyling();
