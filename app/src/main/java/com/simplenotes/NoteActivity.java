@@ -61,6 +61,11 @@ public class NoteActivity extends AppCompatActivity {
     private ImageButton btnBold, btnItalic, btnUnderline, btnTextColor, btnBackendColor;
     private int manualOverridePosition = -1; // [NEW] Track where user manually toggled styles
 
+    // Refer To State
+    private String pendingReferToReference;
+    private int pendingReferToStart;
+    private int pendingReferToEnd;
+
     // Text Watcher State
     private int lastChangeStart = 0;
     private int lastChangeCount = 0;
@@ -120,6 +125,37 @@ public class NoteActivity extends AppCompatActivity {
         setupFormattingButtons();
         setupStickyFormatting();
         setupSelectionListener();
+
+        // Setup Refer To Listener
+        editTextContent.setOnReferToListener((text, start, end) -> {
+            pendingReferToReference = text;
+            pendingReferToStart = start;
+            pendingReferToEnd = end;
+
+            // Open Version Sheet for Selection
+            BibleVersionSheet sheet = new BibleVersionSheet();
+            sheet.setListener(version -> {
+                // Determine if this is a standard switch or a Refer To action
+                if (pendingReferToReference != null) {
+                    fetchAndInsertReferTo(pendingReferToReference, version.getId(), pendingReferToEnd);
+                    pendingReferToReference = null; // Reset
+                    Toast.makeText(NoteActivity.this, "referring to " + version.getName(), Toast.LENGTH_SHORT).show();
+                } else {
+                    // Standard version switch logic
+                    currentTranslation = version.getId();
+                    textViewVersion.setText("Bible Version: " + version.getName());
+
+                    // Save preference
+                    getSharedPreferences("bible_prefs", MODE_PRIVATE)
+                            .edit()
+                            .putString("selected_version", currentTranslation)
+                            .apply();
+
+                    Toast.makeText(NoteActivity.this, "Set to: " + version.getName(), Toast.LENGTH_SHORT).show();
+                }
+            });
+            sheet.show(getSupportFragmentManager(), "BibleVersionSheet");
+        });
     }
 
     private void setupSelectionListener() {
@@ -442,6 +478,9 @@ public class NoteActivity extends AppCompatActivity {
 
     private void setupVersionSwitcher() {
         buttonVersion.setOnClickListener(v -> {
+            // Ensure pending refer is cleared when simply clicking the switcher
+            pendingReferToReference = null;
+
             BibleVersionSheet sheet = new BibleVersionSheet();
             sheet.setListener(version -> {
                 currentTranslation = version.getId();
@@ -802,6 +841,125 @@ public class NoteActivity extends AppCompatActivity {
         editTextContent.setText(ssb);
         editTextContent.setSelection(ssb.length());
         applyVerseStyling();
+    }
+
+    private void fetchAndInsertReferTo(String reference, String versionId, int insertPos) {
+        // Reuse fetch logic but with specific insertion
+        AppExecutors.getInstance().diskIO().execute(() -> {
+            // 1. Try Local DB
+            BibleDao dao = database.bibleDao();
+            String refTrimmed = reference.trim();
+            // Simple parsing (same as magic fetch)
+            int lastSpace = refTrimmed.lastIndexOf(' '); // e.g. "Genesis 1:1" -> "Genesis" "1:1"
+
+            String finalVerseText = null;
+            boolean found = false;
+
+            if (lastSpace != -1) {
+                try {
+                    String book = refTrimmed.substring(0, lastSpace).trim();
+                    String versePart = refTrimmed.substring(lastSpace + 1).trim();
+                    String[] cv = versePart.split(":");
+
+                    if (cv.length == 2) {
+                        int chapter = Integer.parseInt(cv[0]);
+                        if (cv[1].contains("-")) {
+                            // Range
+                            String[] range = cv[1].split("-");
+                            int startV = Integer.parseInt(range[0]);
+                            int endV = Integer.parseInt(range[1]);
+                            List<Verse> verses = dao.getVersesInRange(versionId, book, chapter, startV, endV);
+                            if (verses != null && !verses.isEmpty()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (Verse v : verses) {
+                                    sb.append(v.getText()).append(" ");
+                                }
+                                finalVerseText = sb.toString().trim();
+                                found = true;
+                            }
+                        } else {
+                            int verseNum = Integer.parseInt(cv[1]);
+                            Verse v = dao.getVerse(versionId, book, chapter, verseNum);
+                            if (v != null) {
+                                finalVerseText = v.getText();
+                                found = true;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (found && finalVerseText != null) {
+                String textToInsert = finalVerseText;
+                AppExecutors.getInstance().mainThread().execute(() -> {
+                    insertReferToText(textToInsert, insertPos);
+                });
+            } else {
+                // 2. Network Fallback
+                AppExecutors.getInstance().mainThread().execute(() -> {
+                    fetchReferToNetwork(reference, versionId, insertPos);
+                });
+            }
+        });
+    }
+
+    private void fetchReferToNetwork(String reference, String versionId, int insertPos) {
+        com.simplenotes.api.ApiClient.getService().getVerse(reference, versionId)
+                .enqueue(new retrofit2.Callback<com.simplenotes.api.BibleResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<com.simplenotes.api.BibleResponse> call,
+                            retrofit2.Response<com.simplenotes.api.BibleResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            String text = response.body().getText();
+                            if (response.body().getVerses() != null && !response.body().getVerses().isEmpty()) {
+                                StringBuilder sb = new StringBuilder();
+                                for (com.simplenotes.api.BibleResponse.Verse v : response.body().getVerses()) {
+                                    sb.append(v.getText()).append(" ");
+                                }
+                                text = sb.toString().trim();
+                            }
+
+                            if (text != null) {
+                                // Cache it
+                                String finalText = text;
+                                AppExecutors.getInstance().diskIO().execute(() -> {
+                                    if (response.body().getVerses() != null) {
+                                        for (com.simplenotes.api.BibleResponse.Verse v : response.body().getVerses()) {
+                                            database.bibleDao().insertVerse(new Verse(versionId, v.getBookName(),
+                                                    v.getChapter(), v.getVerse(), v.getText()));
+                                        }
+                                    }
+                                });
+
+                                // Update UI
+                                insertReferToText(text, insertPos);
+                            }
+                        } else {
+                            Toast.makeText(NoteActivity.this, "Failed to fetch reference", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<com.simplenotes.api.BibleResponse> call, Throwable t) {
+                        Toast.makeText(NoteActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void insertReferToText(String text, int position) {
+        if (editTextContent.getText() == null)
+            return;
+
+        SpannableStringBuilder ssb = new SpannableStringBuilder();
+        ssb.append("\n");
+        ssb.append(text);
+
+        int len = editTextContent.getText().length();
+        int safePos = Math.min(len, Math.max(0, position));
+
+        editTextContent.getText().insert(safePos, ssb);
     }
 
     private void initializeHighlightColors() {
