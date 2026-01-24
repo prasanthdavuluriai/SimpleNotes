@@ -369,7 +369,13 @@ public class NoteActivity extends AppCompatActivity {
                         isLoading = true; // [FIX] Disable sticky logic during load
                         try {
                             if (com.simplenotes.utils.RichTextUtils.isJson(content)) {
-                                editTextContent.setText(com.simplenotes.utils.RichTextUtils.fromJson(content));
+                                CharSequence clean = com.simplenotes.utils.RichTextUtils.fromJson(content);
+                                // [FIX] Re-inject markers for editing compatibility
+                                if (clean instanceof android.text.Spannable) {
+                                    editTextContent.setText(reinjectMarkers((android.text.Spannable) clean));
+                                } else {
+                                    editTextContent.setText(clean);
+                                }
                             } else if (content.contains("<") && content.contains(">")) {
                                 CharSequence styled = Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY);
                                 editTextContent.setText(trimSpannable(styled));
@@ -1298,26 +1304,32 @@ public class NoteActivity extends AppCompatActivity {
 
         String title = editTextTitle.getText().toString().trim();
 
-        // [FIX] Prepare content for HTML conversion
-        // Html.toHtml ignores text inside ReplacementSpans (like HiddenSpan).
-        // We MUST remove HiddenSpans so the hidden markers (which are just text) are
-        // saved.
-        // We also remove AutoColorSpan so we don't hardcode dynamic colors (Gold).
-        SpannableStringBuilder ssb = new SpannableStringBuilder(editTextContent.getText());
+        // [FIX] Clean Highlight Markers from the text before saving
+        // We want to save "Clean Text" + "Spans", not "Text with invisible markers"
+        // 1. Clone the text so we don't mess up the editor state
+        SpannableStringBuilder cleanSsb = new SpannableStringBuilder(ssb);
 
-        HiddenSpan[] hiddenSpans = ssb.getSpans(0, ssb.length(), HiddenSpan.class);
+        // 2. Remove text covered by HiddenSpan (Markers)
+        // Iterate backwards to avoid index shifting issues
+        HiddenSpan[] hiddenSpans = cleanSsb.getSpans(0, cleanSsb.length(), HiddenSpan.class);
+        java.util.Arrays.sort(hiddenSpans, (o1, o2) -> {
+            int s1 = cleanSsb.getSpanStart(o1);
+            int s2 = cleanSsb.getSpanStart(o2);
+            return Integer.compare(s2, s1); // Descending order
+        });
+
         for (HiddenSpan span : hiddenSpans) {
-            ssb.removeSpan(span);
-        }
-
-        AutoColorSpan[] autoSpans = ssb.getSpans(0, ssb.length(), AutoColorSpan.class);
-        for (AutoColorSpan span : autoSpans) {
-            ssb.removeSpan(span);
+            int start = cleanSsb.getSpanStart(span);
+            int end = cleanSsb.getSpanEnd(span);
+            if (start >= 0 && end <= cleanSsb.length() && start < end) {
+                cleanSsb.delete(start, end);
+            }
+            cleanSsb.removeSpan(span);
         }
 
         // [FIX] Use JSON Persistence instead of HTML
         // This avoids all HTML conversion issues (newlines, spans, etc.)
-        String content = com.simplenotes.utils.RichTextUtils.toJson(ssb);
+        String content = com.simplenotes.utils.RichTextUtils.toJson(cleanSsb);
 
         // Update note data in memory
         currentNote.setTitle(title);
@@ -1330,6 +1342,56 @@ public class NoteActivity extends AppCompatActivity {
         AppExecutors.getInstance().diskIO().execute(() -> {
             database.noteDao().insert(currentNote);
         });
+    }
+
+    // [FIX] Re-inject markers into clean text for editing logic compatibility
+    private Spannable reinjectMarkers(Spannable s) {
+        if (s == null)
+            return null;
+        SpannableStringBuilder ssb = new SpannableStringBuilder(s);
+
+        RoundedHighlighterSpan[] spans = ssb.getSpans(0, ssb.length(), RoundedHighlighterSpan.class);
+        // Sort spans? Order might matter if nested, but highlights usually flat.
+        // If we modify text (insert), subsequent spans shift automatically? Yes,
+        // SpannableStringBuilder handles it.
+        // Valid for standard spans. But RoundedHighlighterSpan is attached to the text.
+        // We must iterate backwards to keep indices valid?
+        // Actually, if we insert at 10, a span at 20 moves to 25. Correct.
+        // A span at 5..15 becomes 5..20? Yes.
+
+        // Loop backwards just in case
+        java.util.Arrays.sort(spans, (o1, o2) -> Integer.compare(ssb.getSpanStart(o2), ssb.getSpanStart(o1)));
+
+        for (RoundedHighlighterSpan span : spans) {
+            int start = ssb.getSpanStart(span);
+            int end = ssb.getSpanEnd(span);
+            int color = span.getBackgroundColor();
+
+            // Find color index
+            int colorIndex = -1;
+            for (int i = 0; i < highlightColors.length; i++) {
+                if (highlightColors[i] == color) {
+                    colorIndex = i;
+                    break;
+                }
+            }
+            if (colorIndex == -1)
+                colorIndex = 0; // Default or fallback
+
+            // Insert End Marker first (doesn't shift start)
+            ssb.insert(end, "\u200D");
+            // Insert Start Marker
+            ssb.insert(start, "\u200C{" + colorIndex + "}");
+
+            // Note: The original generic RoundedHighlighterSpan from JSON covers the
+            // "clean" text.
+            // After insertion, it covers "Marker + Clean + Marker"?
+            // Yes, standard behavior is expand-on-insert if strict?
+            // Actually, we rely on applyStyling to RE-PARSE everything.
+            // So we don't care if the span expands. applyStyling will remove old spans and
+            // create new ones.
+        }
+        return ssb;
     }
 
     private int[] prependZero(int[] original) {
