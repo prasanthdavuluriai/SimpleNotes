@@ -369,7 +369,8 @@ public class NoteActivity extends AppCompatActivity {
                         isLoading = true; // [FIX] Disable sticky logic during load
                         try {
                             if (content.contains("<") && content.contains(">")) {
-                                editTextContent.setText(Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY));
+                                CharSequence styled = Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY);
+                                editTextContent.setText(trimSpannable(styled));
                             } else {
                                 editTextContent.setText(content);
                             }
@@ -389,6 +390,21 @@ public class NoteActivity extends AppCompatActivity {
                 });
             }
         }
+    }
+
+    // [FIX] Helper to trim whitespace from Spanned text without losing spans
+    private CharSequence trimSpannable(CharSequence s) {
+        if (s == null || s.length() == 0)
+            return s;
+        int start = 0;
+        int end = s.length();
+        while (start < end && Character.isWhitespace(s.charAt(start))) {
+            start++;
+        }
+        while (end > start && Character.isWhitespace(s.charAt(end - 1))) {
+            end--;
+        }
+        return s.subSequence(start, end);
     }
 
     private void initializeBibleVersions() {
