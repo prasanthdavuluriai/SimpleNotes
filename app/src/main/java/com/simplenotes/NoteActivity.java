@@ -368,7 +368,9 @@ public class NoteActivity extends AppCompatActivity {
                     if (content != null) {
                         isLoading = true; // [FIX] Disable sticky logic during load
                         try {
-                            if (content.contains("<") && content.contains(">")) {
+                            if (com.simplenotes.utils.RichTextUtils.isJson(content)) {
+                                editTextContent.setText(com.simplenotes.utils.RichTextUtils.fromJson(content));
+                            } else if (content.contains("<") && content.contains(">")) {
                                 CharSequence styled = Html.fromHtml(content, Html.FROM_HTML_MODE_LEGACY);
                                 editTextContent.setText(trimSpannable(styled));
                             } else {
@@ -1313,12 +1315,9 @@ public class NoteActivity extends AppCompatActivity {
             ssb.removeSpan(span);
         }
 
-        // Save as HTML to persist Rich Text
-        String content = Html.toHtml(ssb, Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
-
-        // [FIX] Trim the HTML output to prevent accumulation of newlines at start/end
-        // Html.toHtml often adds trailing invalid newlines or <p> tags.
-        content = content.trim();
+        // [FIX] Use JSON Persistence instead of HTML
+        // This avoids all HTML conversion issues (newlines, spans, etc.)
+        String content = com.simplenotes.utils.RichTextUtils.toJson(ssb);
 
         // Update note data in memory
         currentNote.setTitle(title);
