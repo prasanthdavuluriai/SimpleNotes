@@ -90,8 +90,8 @@ public class NotesListActivity extends AppCompatActivity {
             File cachePath = new File(getCacheDir(), "shared_notes");
             cachePath.mkdirs();
 
-            // Create the file: Title.txt
-            String fileName = (note.getTitle().isEmpty() ? "Untitled" : note.getTitle()) + ".txt";
+            // Create the file: Title.html
+            String fileName = (note.getTitle().isEmpty() ? "Untitled" : note.getTitle()) + ".html";
             // Sanitize filename to avoid issues with special chars
             fileName = fileName.replaceAll("[^a-zA-Z0-9.\\-]", "_");
 
@@ -99,8 +99,25 @@ public class NotesListActivity extends AppCompatActivity {
 
             // Write content
             FileOutputStream stream = new FileOutputStream(newFile);
-            String content = note.getContent() == null ? "" : note.getContent();
-            stream.write(content.getBytes());
+            String rawContent = note.getContent() == null ? "" : note.getContent();
+            String finalContent = rawContent;
+
+            if (com.simplenotes.utils.RichTextUtils.isJson(rawContent)) {
+                try {
+                    // JSON -> Spannable -> HTML
+                    android.text.Spannable text = com.simplenotes.utils.RichTextUtils.fromJson(rawContent);
+                    finalContent = android.text.Html.toHtml(text,
+                            android.text.Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
+                } catch (Exception e) {
+                    finalContent = rawContent; // Fallback
+                }
+            } else {
+                // Legacy HTML or Plain Text
+                // If it looks like HTML, keep it for .html export
+                finalContent = rawContent;
+            }
+
+            stream.write(finalContent.getBytes());
             stream.close();
 
             // Get URI
@@ -111,7 +128,7 @@ public class NotesListActivity extends AppCompatActivity {
                 Intent shareIntent = new Intent();
                 shareIntent.setAction(Intent.ACTION_SEND);
                 shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                shareIntent.setDataAndType(contentUri, "text/plain");
+                shareIntent.setDataAndType(contentUri, "text/html");
                 shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
                 startActivity(Intent.createChooser(shareIntent, "Share Note via"));
             }
