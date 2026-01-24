@@ -126,8 +126,11 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
             if (note.getContent().isEmpty()) {
                 textViewContent.setText("No content");
             } else {
-                textViewContent.setText(
-                        android.text.Html.fromHtml(note.getContent(), android.text.Html.FROM_HTML_MODE_LEGACY));
+                CharSequence styledText = android.text.Html.fromHtml(note.getContent(),
+                        android.text.Html.FROM_HTML_MODE_LEGACY);
+                // Strip persistence markers (\u200C{digits} and \u200D) for the preview
+                String cleanText = styledText.toString().replaceAll("\u200C(\\{\\d+\\})?|\u200D", "");
+                textViewContent.setText(cleanText);
             }
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault());
