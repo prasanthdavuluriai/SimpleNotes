@@ -1,6 +1,7 @@
 package com.simplenotes;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import android.view.MenuItem;
@@ -43,6 +44,16 @@ public class NoteActivity extends AppCompatActivity {
     private String[] highlightColorNames;
     private int[] textColors; // [NEW] Class field
 
+    // Settings
+    private boolean styleEnabled = false;
+    private int customTextColor = 0;
+    private int customTextBgColor = 0;
+    private int customMagicColor = 0;
+    private int customMagicBgColor = 0;
+    private boolean customBold = false;
+    private boolean customItalic = false;
+    private boolean customUnderline = false;
+
     private Note currentNote;
     private boolean isNewNote = true;
 
@@ -79,6 +90,7 @@ public class NoteActivity extends AppCompatActivity {
 
         initViews();
         initializeHighlightColors(); // Initialize colors
+        loadSettings();
 
         if (savedInstanceState != null && savedInstanceState.containsKey("current_note")) {
             currentNote = (Note) savedInstanceState.getSerializable("current_note");
@@ -1372,7 +1384,9 @@ public class NoteActivity extends AppCompatActivity {
         java.util.regex.Pattern versePattern = java.util.regex.Pattern.compile("\u200B(.*?)\u200B",
                 java.util.regex.Pattern.DOTALL);
         java.util.regex.Matcher verseMatcher = versePattern.matcher(content);
-        int goldColor = ContextCompat.getColor(this, R.color.bible_gold);
+
+        int defaultVerseColor = (styleEnabled && customMagicColor != 0) ? customMagicColor
+                : ContextCompat.getColor(this, R.color.bible_gold); // Default or Custom
 
         while (verseMatcher.find()) {
             // Hide the \u200B markers
@@ -1394,7 +1408,14 @@ public class NoteActivity extends AppCompatActivity {
 
             // Only apply default gold if no user color is present
             if (!hasUserColor) {
-                text.setSpan(new AutoColorSpan(goldColor), verseMatcher.start(1), verseMatcher.end(1),
+                text.setSpan(new AutoColorSpan(defaultVerseColor), verseMatcher.start(1), verseMatcher.end(1),
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+
+            // Apply Custom Background Highlight for Magic Verse
+            if (styleEnabled && customMagicBgColor != 0) {
+                text.setSpan(new RoundedHighlighterSpan(customMagicBgColor, 12f), verseMatcher.start(1),
+                        verseMatcher.end(1),
                         Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         }
@@ -1558,5 +1579,53 @@ public class NoteActivity extends AppCompatActivity {
         result[0] = 0; // The "None" value
         System.arraycopy(original, 0, result, 1, original.length);
         return result;
+    }
+
+    private void loadSettings() {
+        SharedPreferences prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, MODE_PRIVATE);
+        styleEnabled = prefs.getBoolean(SettingsActivity.KEY_ENABLED, false);
+
+        if (styleEnabled) {
+            customBold = prefs.getBoolean(SettingsActivity.KEY_TEXT_BOLD, false);
+            customItalic = prefs.getBoolean(SettingsActivity.KEY_TEXT_ITALIC, false);
+            customUnderline = prefs.getBoolean(SettingsActivity.KEY_TEXT_UNDERLINE, false);
+
+            int textIdx = prefs.getInt(SettingsActivity.KEY_TEXT_COLOR_INDEX, 0);
+            if (textIdx > 0 && textIdx <= textColors.length)
+                customTextColor = textColors[textIdx - 1];
+
+            int textBgIdx = prefs.getInt(SettingsActivity.KEY_TEXT_BG_COLOR_INDEX, 0);
+            if (textBgIdx > 0 && textBgIdx <= highlightColors.length)
+                customTextBgColor = highlightColors[textBgIdx - 1];
+
+            int magicIdx = prefs.getInt(SettingsActivity.KEY_MAGIC_COLOR_INDEX, 0);
+            if (magicIdx > 0 && magicIdx <= textColors.length)
+                customMagicColor = textColors[magicIdx - 1];
+
+            int magicBgIdx = prefs.getInt(SettingsActivity.KEY_MAGIC_BG_COLOR_INDEX, 0);
+            if (magicBgIdx > 0 && magicBgIdx <= highlightColors.length)
+                customMagicBgColor = highlightColors[magicBgIdx - 1];
+
+            // Apply Text Settings
+            if (customTextColor != 0)
+                editTextContent.setTextColor(customTextColor);
+            if (customTextBgColor != 0)
+                editTextContent.setBackgroundColor(customTextBgColor);
+
+            int style = Typeface.NORMAL;
+            if (customBold && customItalic)
+                style = Typeface.BOLD_ITALIC;
+            else if (customBold)
+                style = Typeface.BOLD;
+            else if (customItalic)
+                style = Typeface.ITALIC;
+
+            editTextContent.setTypeface(Typeface.create(Typeface.DEFAULT, style));
+
+            // Underline is paint flag
+            if (customUnderline) {
+                editTextContent.getPaint().setUnderlineText(true);
+            }
+        }
     }
 }

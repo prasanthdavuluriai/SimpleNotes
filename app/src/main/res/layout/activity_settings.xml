@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/background_gradient">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/bible_gold" />
+    </RelativeLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Master Switch -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingBottom="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Note Style"
+                    android:textSize="18sp"
+                    android:textColor="@color/bible_cream"
+                    android:textStyle="bold" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchNoteStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:trackTint="@color/bible_gold" />
+            </LinearLayout>
+
+            <!-- Settings Container -->
+            <LinearLayout
+                android:id="@+id/layoutSettingsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Section 1: Text -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Text"
+                    android:textSize="16sp"
+                    android:textColor="@color/bible_gold"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Font Style -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Font Style"
+                    android:textColor="@color/bible_cream"
+                    android:layout_marginBottom="4dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <ImageButton
+                        android:id="@+id/btnSettingBold"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:src="@drawable/ic_format_bold"
+                        android:background="?selectableItemBackgroundBorderless"
+                        app:tint="@color/bible_cream" />
+                    <ImageButton
+                        android:id="@+id/btnSettingItalic"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="16dp"
+                        android:src="@drawable/ic_format_italic"
+                        android:background="?selectableItemBackgroundBorderless"
+                        app:tint="@color/bible_cream" />
+                    <ImageButton
+                        android:id="@+id/btnSettingUnderline"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="16dp"
+                        android:src="@drawable/ic_format_underlined"
+                        android:background="?selectableItemBackgroundBorderless"
+                        app:tint="@color/bible_cream" />
+                </LinearLayout>
+
+                <!-- Font Color -->
+                <LinearLayout
+                    android:id="@+id/layoutSettingFontColor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Font Color"
+                        android:textColor="@color/bible_cream" />
+
+                    <View
+                        android:id="@+id/viewSettingFontColorPreview"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="#00000000" />
+                </LinearLayout>
+
+                <!-- Background Highlight -->
+                <LinearLayout
+                    android:id="@+id/layoutSettingBgHighlight"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Background Highlight"
+                        android:textColor="@color/bible_cream" />
+
+                    <View
+                        android:id="@+id/viewSettingBgHighlightPreview"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="#00000000" />
+                </LinearLayout>
+
+                <!-- Section 2: Magic Verse -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Magic Verse"
+                    android:textSize="16sp"
+                    android:textColor="@color/bible_gold"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Magic Font Color -->
+                <LinearLayout
+                    android:id="@+id/layoutSettingMagicFontColor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Font Color"
+                        android:textColor="@color/bible_cream" />
+
+                    <View
+                        android:id="@+id/viewSettingMagicFontColorPreview"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="#00000000" />
+                </LinearLayout>
+
+                <!-- Magic Background Highlight -->
+                <LinearLayout
+                    android:id="@+id/layoutSettingMagicBgHighlight"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?selectableItemBackground"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Background Highlight"
+                        android:textColor="@color/bible_cream" />
+
+                    <View
+                        android:id="@+id/viewSettingMagicBgHighlightPreview"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="#00000000" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
