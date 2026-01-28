@@ -1596,7 +1596,7 @@ public class NoteActivity extends AppCompatActivity {
 
             int textBgIdx = prefs.getInt(SettingsActivity.KEY_TEXT_BG_COLOR_INDEX, 0);
             if (textBgIdx > 0 && textBgIdx <= highlightColors.length)
-                customTextBgColor = highlightColors[textBgIdx - 1];
+                pendingHighlightColor = textBgIdx - 1; // [FIX] Set default sticky highlight
 
             int magicIdx = prefs.getInt(SettingsActivity.KEY_MAGIC_COLOR_INDEX, 0);
             if (magicIdx > 0 && magicIdx <= textColors.length)
@@ -1609,8 +1609,10 @@ public class NoteActivity extends AppCompatActivity {
             // Apply Text Settings
             if (customTextColor != 0)
                 editTextContent.setTextColor(customTextColor);
-            if (customTextBgColor != 0)
-                editTextContent.setBackgroundColor(customTextBgColor);
+            if (customTextBgColor != 0) {
+                // Removed incorrect setBackgroundColor
+            }
+            updateToolbarUI(); // Ensure toolbar reflects default highlight
 
             int style = Typeface.NORMAL;
             if (customBold && customItalic)
