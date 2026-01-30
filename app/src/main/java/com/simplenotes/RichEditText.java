@@ -121,6 +121,19 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
         return super.startActionMode(wrappedCallback, type);
     }
 
+    @Override
+    protected void performFiltering(CharSequence text, int keyCode) {
+        // [FIX] Clean invisible markers from the query text before filtering
+        // This ensures that "G\u200C{1}en\u200D" becomes "Gen" and matches "Genesis"
+        if (text != null) {
+            String raw = text.toString();
+            // Regex to remove markers: \u200C, \u200D, and {\d+}
+            String clean = raw.replaceAll("\u200C|\\{\\d+\\}|\u200D", "");
+            text = clean;
+        }
+        super.performFiltering(text, keyCode);
+    }
+
     public interface OnReferToListener {
         void onReferToRequested(String text, int start, int end);
     }
