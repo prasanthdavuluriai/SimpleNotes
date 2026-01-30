@@ -21,21 +21,19 @@ public class SettingsActivity extends AppCompatActivity {
     public static final String KEY_TEXT_ITALIC = "text_italic";
     public static final String KEY_TEXT_UNDERLINE = "text_underline";
     public static final String KEY_TEXT_COLOR_INDEX = "text_color_index";
-    public static final String KEY_TEXT_BG_COLOR_INDEX = "text_bg_color_index";
+    // REMOVED: KEY_TEXT_BG_COLOR_INDEX
     public static final String KEY_MAGIC_COLOR_INDEX = "magic_color_index";
-    public static final String KEY_MAGIC_BG_COLOR_INDEX = "magic_bg_color_index";
+    // REMOVED: KEY_MAGIC_BG_COLOR_INDEX
 
     private SwitchCompat switchNoteStyle;
     private LinearLayout layoutSettingsContainer;
     private ImageButton btnBold, btnItalic, btnUnderline;
-    private View viewFontColorPreview, viewBgHighlightPreview;
-    private View viewMagicFontColorPreview, viewMagicBgHighlightPreview;
+    private View viewFontColorPreview;
+    private View viewMagicFontColorPreview;
 
     private boolean isBold, isItalic, isUnderline;
     private int textColorIndex = 0;
-    private int textBgColorIndex = 0;
     private int magicColorIndex = 0;
-    private int magicBgColorIndex = 0;
 
     private int[] highlightColors;
     private int[] textColors;
@@ -87,21 +85,12 @@ public class SettingsActivity extends AppCompatActivity {
         btnUnderline = findViewById(R.id.btnSettingUnderline);
 
         viewFontColorPreview = findViewById(R.id.viewSettingFontColorPreview);
-        viewBgHighlightPreview = findViewById(R.id.viewSettingBgHighlightPreview);
         viewMagicFontColorPreview = findViewById(R.id.viewSettingMagicFontColorPreview);
-        viewMagicBgHighlightPreview = findViewById(R.id.viewSettingMagicBgHighlightPreview);
 
         findViewById(R.id.layoutSettingFontColor)
                 .setOnClickListener(v -> showColorPicker("Font Color", textColors, textColorIndex, index -> {
                     textColorIndex = index;
                     updatePreview(viewFontColorPreview, textColors, textColorIndex);
-                    savePreferences();
-                }));
-
-        findViewById(R.id.layoutSettingBgHighlight).setOnClickListener(
-                v -> showColorPicker("Background Highlight", highlightColors, textBgColorIndex, index -> {
-                    textBgColorIndex = index;
-                    updatePreview(viewBgHighlightPreview, highlightColors, textBgColorIndex);
                     savePreferences();
                 }));
 
@@ -112,12 +101,6 @@ public class SettingsActivity extends AppCompatActivity {
                     savePreferences();
                 }));
 
-        findViewById(R.id.layoutSettingMagicBgHighlight).setOnClickListener(
-                v -> showColorPicker("Magic Verse Background", highlightColors, magicBgColorIndex, index -> {
-                    magicBgColorIndex = index;
-                    updatePreview(viewMagicBgHighlightPreview, highlightColors, magicBgColorIndex);
-                    savePreferences();
-                }));
     }
 
     private void loadPreferences() {
@@ -131,9 +114,7 @@ public class SettingsActivity extends AppCompatActivity {
         isUnderline = prefs.getBoolean(KEY_TEXT_UNDERLINE, false);
 
         textColorIndex = prefs.getInt(KEY_TEXT_COLOR_INDEX, 0);
-        textBgColorIndex = prefs.getInt(KEY_TEXT_BG_COLOR_INDEX, 0);
         magicColorIndex = prefs.getInt(KEY_MAGIC_COLOR_INDEX, 0);
-        magicBgColorIndex = prefs.getInt(KEY_MAGIC_BG_COLOR_INDEX, 0);
     }
 
     private void setupListeners() {
@@ -167,9 +148,7 @@ public class SettingsActivity extends AppCompatActivity {
         btnUnderline.setColorFilter(isUnderline ? activeColor : inactiveColor);
 
         updatePreview(viewFontColorPreview, textColors, textColorIndex);
-        updatePreview(viewBgHighlightPreview, highlightColors, textBgColorIndex);
         updatePreview(viewMagicFontColorPreview, textColors, magicColorIndex);
-        updatePreview(viewMagicBgHighlightPreview, highlightColors, magicBgColorIndex);
     }
 
     private void updatePreview(View view, int[] colors, int index) {
@@ -196,9 +175,7 @@ public class SettingsActivity extends AppCompatActivity {
         editor.putBoolean(KEY_TEXT_ITALIC, isItalic);
         editor.putBoolean(KEY_TEXT_UNDERLINE, isUnderline);
         editor.putInt(KEY_TEXT_COLOR_INDEX, textColorIndex);
-        editor.putInt(KEY_TEXT_BG_COLOR_INDEX, textBgColorIndex);
         editor.putInt(KEY_MAGIC_COLOR_INDEX, magicColorIndex);
-        editor.putInt(KEY_MAGIC_BG_COLOR_INDEX, magicBgColorIndex);
         editor.apply();
     }
 

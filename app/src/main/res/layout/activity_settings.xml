@@ -136,30 +136,6 @@
                         android:background="#00000000" />
                 </LinearLayout>
 
-                <!-- Background Highlight -->
-                <LinearLayout
-                    android:id="@+id/layoutSettingBgHighlight"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="?selectableItemBackground"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Background Highlight"
-                        android:textColor="@color/bible_cream" />
-
-                    <View
-                        android:id="@+id/viewSettingBgHighlightPreview"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:background="#00000000" />
-                </LinearLayout>
 
                 <!-- Section 2: Magic Verse -->
                 <TextView
@@ -196,30 +172,6 @@
                         android:background="#00000000" />
                 </LinearLayout>
 
-                <!-- Magic Background Highlight -->
-                <LinearLayout
-                    android:id="@+id/layoutSettingMagicBgHighlight"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="?selectableItemBackground"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Background Highlight"
-                        android:textColor="@color/bible_cream" />
-
-                    <View
-                        android:id="@+id/viewSettingMagicBgHighlightPreview"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:background="#00000000" />
-                </LinearLayout>
 
             </LinearLayout>
         </LinearLayout>

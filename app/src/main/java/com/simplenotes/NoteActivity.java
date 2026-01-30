@@ -47,9 +47,7 @@ public class NoteActivity extends AppCompatActivity {
     // Settings
     private boolean styleEnabled = false;
     private int customTextColor = 0;
-    private int customTextBgColor = 0;
     private int customMagicColor = 0;
-    private int customMagicBgColor = 0;
     private boolean customBold = false;
     private boolean customItalic = false;
     private boolean customUnderline = false;
@@ -1495,11 +1493,7 @@ public class NoteActivity extends AppCompatActivity {
             }
 
             // Apply Custom Background Highlight for Magic Verse
-            if (styleEnabled && customMagicBgColor != 0) {
-                text.setSpan(new RoundedHighlighterSpan(customMagicBgColor, 12f), verseMatcher.start(1),
-                        verseMatcher.end(1),
-                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
+            // REMOVED
         }
 
         // 4. Highlight Coloring
@@ -1676,23 +1670,13 @@ public class NoteActivity extends AppCompatActivity {
             if (textIdx > 0 && textIdx <= textColors.length)
                 customTextColor = textColors[textIdx - 1];
 
-            int textBgIdx = prefs.getInt(SettingsActivity.KEY_TEXT_BG_COLOR_INDEX, 0);
-            if (textBgIdx > 0 && textBgIdx <= highlightColors.length)
-                customTextBgColor = highlightColors[textBgIdx - 1];
-
             int magicIdx = prefs.getInt(SettingsActivity.KEY_MAGIC_COLOR_INDEX, 0);
             if (magicIdx > 0 && magicIdx <= textColors.length)
                 customMagicColor = textColors[magicIdx - 1];
 
-            int magicBgIdx = prefs.getInt(SettingsActivity.KEY_MAGIC_BG_COLOR_INDEX, 0);
-            if (magicBgIdx > 0 && magicBgIdx <= highlightColors.length)
-                customMagicBgColor = highlightColors[magicBgIdx - 1];
-
             // Apply Text Settings
             if (customTextColor != 0)
                 editTextContent.setTextColor(customTextColor);
-            if (customTextBgColor != 0)
-                editTextContent.setBackgroundColor(customTextBgColor);
 
             int style = Typeface.NORMAL;
             if (customBold && customItalic)
