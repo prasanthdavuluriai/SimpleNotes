@@ -627,29 +627,104 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void checkForBibleReference(String text, int cursorPos) {
-        // Regex to find @Book Chapter:Verse pattern (e.g., @John 3:16 or @1 Samuel 1:1)
-        // followed by whitespace
+        // Robust Magic Verse Detection that ignores invisible formatting markers
+        // (\u200C, \u200D, {\d+})
+
+        // 1. Limit scope to reasonable window (e.g. last 100 chars) to assume trigger
+        // isn't longer
+        // This avoids processing the entire note for every keystroke.
+        int windowSize = 100;
+        int startOffset = Math.max(0, text.length() - windowSize);
+        String sub = text.substring(startOffset);
+
+        // 2. Build Clean Text and Map
+        // cleanSb holds the text as it appears visually (without markers)
+        // map holds the ORIGINAL raw index for each character in cleanSb
+        StringBuilder cleanSb = new StringBuilder();
+        java.util.List<Integer> map = new java.util.ArrayList<>();
+
+        int i = 0;
+        int len = sub.length();
+        while (i < len) {
+            char c = sub.charAt(i);
+
+            // Check for Start Marker: \u200C optionally followed by {\d+}
+            if (c == '\u200C') {
+                i++; // Skip \u200C
+                // Skip potential {digits}
+                if (i < len && sub.charAt(i) == '{') {
+                    // Fast forward until }
+                    int j = i + 1;
+                    while (j < len && Character.isDigit(sub.charAt(j))) {
+                        j++;
+                    }
+                    if (j < len && sub.charAt(j) == '}') {
+                        i = j + 1; // Skip past }
+                    }
+                    // If pattern didn't match {digits}, we just skipped \u200C.
+                    // The '{' remains as valid text?
+                    // In our strict app logic, \u200C always precedes the color tag or is a legacy
+                    // marker.
+                    // Ideally we should be stricter, but skipping {digits} block after 200C is safe
+                    // for this specific bug.
+                    // If the user typed "\u200C{", they are weird.
+                }
+            }
+            // Check for End Marker: \u200D
+            else if (c == '\u200D') {
+                i++;
+            } else {
+                // Regular character
+                cleanSb.append(c);
+                map.add(startOffset + i); // Store absolute index in 'text'
+                i++;
+            }
+        }
+
+        String cleanText = cleanSb.toString();
+
+        // 3. Regex on Clean Text
         // Matches "@Book Chapter:Verse" followed by one or more whitespace characters
-        // at the end
+        // at the end ($)
         java.util.regex.Pattern pattern = java.util.regex.Pattern
                 .compile("(@([a-zA-Z0-9\\s]+ \\d+:\\d+(?:-\\d+)?))\\s+$");
-        java.util.regex.Matcher matcher = pattern.matcher(text);
+        java.util.regex.Matcher matcher = pattern.matcher(cleanText);
 
         if (matcher.find()) {
-            String fullTrigger = matcher.group(1); // The whole "@Luke 1:1 "
-            String reference = matcher.group(2).trim(); // "Luke 1:1"
+            String reference = matcher.group(2).trim(); // "Book Chapter:Verse"
 
-            // Calculate start index based on match length and cursor position
-            // Since we matched against the substring ending at cursorPos, the end of match
-            // is effectively cursorPos (minus trailing whitespace potentially caught by
-            // regex but group 1 captures strict trigger part usually, let's correspond)
-            // Actually group 0 is the whole match including waiting whitespace.
-            // We want to replace group 0.
+            int cleanStart = matcher.start();
+            int cleanEnd = matcher.end(); // Exclusive
 
-            int matchEnd = cursorPos; // Because we anchored to $ of substring(0, cursorPos)
-            int matchStart = matchEnd - matcher.group(0).length();
+            // 4. Map Clean Indices back to Raw Indices
+            if (cleanStart >= map.size())
+                return; // Safety
 
-            fetchVerse(reference, matchStart, matchEnd);
+            int rawStart = map.get(cleanStart);
+            int rawEnd;
+
+            if (cleanEnd < map.size()) {
+                rawEnd = map.get(cleanEnd);
+            } else {
+                // If match goes to the very end of clean text (which implies end of raw text
+                // too, mostly)
+                // We use the full length of the passed text (cursorPos)
+                if (cleanEnd == cleanText.length()) {
+                    rawEnd = text.length();
+                } else {
+                    // Should not be reachable given strict mapping,
+                    // unless we stripped trailing markers at the very end?
+                    // If we stripped markers at the end, map.size() < raw text length.
+                    // But cleanEnd == map.size().
+                    // map.get(cleanEnd) is IndexOutOfBounds.
+                    // In that case, we can assume it extends to the end of the processed window...
+                    // but simpler to just say rawEnd = text.length() (cursorPos)
+                    // because the regex is anchored to '$' of the passed text segment.
+                    rawEnd = text.length();
+                }
+            }
+
+            fetchVerse(reference, rawStart, rawEnd);
         }
     }
 
