@@ -1540,6 +1540,18 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // [FIX] Reload settings and re-apply styles when returning to the activity
+        // (e.g. from Settings or after Rotation)
+        loadSettings();
+        // Post to ensure View state restoration is complete before we mess with spans
+        if (editTextContent != null) {
+            editTextContent.post(() -> applyVerseStyling());
+        }
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         saveNote();
