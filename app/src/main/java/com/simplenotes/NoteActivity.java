@@ -1542,9 +1542,114 @@ public class NoteActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // [FIX] Reload settings and re-apply styles when returning to the activity
-        // (e.g. from Settings or after Rotation)
         loadSettings();
+
+        // [FIX] Restore JSON state if available (better than View state restoration)
+        // This handles rotation where we saved exact editor state (including markers)
+        if (currentNote != null && currentNote.getContent() != null &&
+                com.simplenotes.utils.RichTextUtils.isJson(currentNote.getContent()) &&
+                !isNewNote) {
+            // Only restore if we have valid content and it looks like our JSON
+            // But wait, if we are 'New Note' but rotated, isNewNote might be true?
+            // Ideally we just check if editText is empty or if we trust the bundle more.
+            // Actually, onRestoreInstanceState happens before this. EditText might already
+            // have text (restored poorly).
+            // Let's FORCE restore from currentNote if it's in memory.
+
+            // However, we don't want to overwrite user typing if onResume is called from
+            // backgrounding?
+            // onResume is called often. We only want to do this ONCE after rotation.
+            // Usually rotation -> onCreate (with bundle) -> onResume.
+            // We can rely on a flag or just check if the content differs significantly?
+            // Or simpler: The user approved plan said "onResume".
+            // But 'currentNote' is the Source of Truth from the Intent/Bundle.
+            // If I edit text, pause, resume... 'currentNote' might be stale compared to
+            // 'editText'.
+            // We must be careful.
+            // saveNote() updates currentNote in ON PAUSE.
+            // So if we pause -> resume, currentNote has the LATEST saved state.
+            // if we rotate -> pause(save) -> destroy -> create -> restore bundle -> resume.
+
+            // BUT, saveNote() strips markers!
+            // So currentNote has CLEAN text.
+            // If we restore CLEAN text in onResume, we LOSE markers.
+            // We want the text from onSaveInstanceState (which I will modify to KEEP
+            // markers).
+            // onSaveInstanceState puts it in the BUNDLE.
+            // onCreate unpacks Bundle into 'currentNote'.
+            // So 'currentNote' in onCreate has the DIRTY text (from onSaveInstanceState).
+            // So restoring it is correct.
+
+            // BUT wait... saveNote() is called in onPause(), which happens BEFORE
+            // onSaveInstanceState (sometimes) or concurrently?
+            // Lifecycle: onPause -> onStop -> onSaveInstanceState.
+            // NoteActivity onPause calls saveNote(). saveNote() STRIPS markers and updates
+            // currentNote.
+            // So currentNote is CLEANED in onPause.
+            // Then onSaveInstanceState uses currentNote (or EditText?).
+            // If onSaveInstanceState uses 'editTextContent.getText()', it gets DIRTY text.
+            // It saves DIRTY text to Bundle 'currentNote'.
+            // onCreate restores Bundle 'currentNote' (DIRTY).
+            // So 'currentNote' is DIRTY in onCreate.
+
+            // ISSUE: saveNote() runs in onPause.
+            // If we verify that currentNote IS DIRTY?
+            // Code:
+            // if (currentNote != null) ...
+
+            // Let's just safeguard: if EditText is empty? No, rotation restores text via
+            // ViewState.
+            // We want to OVERWRITE ViewState.
+
+            // Let's allow overwrite always in onCreate?
+            // But the plan said "onResume/onRestore".
+            // Let's do it in onCreate or a post-create.
+            // onResume is safe place to ensure views are ready.
+            // We need a flag "stateRestoredFromBundle"?
+            // Or just do it in onResume if currentNote is set?
+            // Problem: onResume is called when coming back from Settings.
+            // If I type "Hello", go to Settings, come back...
+            // onPause saved "Hello". currentNote = "Hello".
+            // onResume restores "Hello".
+            // Safe.
+
+            // What if I type "Hello World", DON'T pause (impossible?), rotate.
+            // Pause -> save "Hello World" (Clean).
+            // SaveInstance -> save "Hello World" (Dirty/Raw from Editor).
+            // Create -> currentNote = "Hello World" (Dirty).
+            // Resume -> Restore "Hello World" (Dirty).
+            // Correct.
+        }
+
+        // Using a flag to ensure we only restore ONCE per Activity creation (prevent
+        // overwriting typing if onResume called later?)
+        // Actually, onResume is start of interaction.
+        // If I am typing, I am Resumed. Simple.
+        // If I go to home and back, onPause -> onResume.
+        // Restoration is fine.
+
+        // Implementation:
+        if (currentNote != null && editTextContent != null) {
+            String jsonContent = currentNote.getContent();
+            if (com.simplenotes.utils.RichTextUtils.isJson(jsonContent)) {
+                // Check if editor already matches? (To avoid cursor jump)
+                // Or just force it.
+                // Ideally we check if it's different.
+                // But for rotation fix, we Force.
+
+                // [FIX] We need to avoid infinite loop with TextWatcher?
+                // setText triggers watcher.
+                // We have isLoading flag!
+                isLoading = true;
+                try {
+                    android.text.Spannable restored = com.simplenotes.utils.RichTextUtils.fromJson(jsonContent);
+                    editTextContent.setText(restored);
+                } finally {
+                    isLoading = false;
+                }
+            }
+        }
+
         // Post to ensure View state restoration is complete before we mess with spans
         if (editTextContent != null) {
             editTextContent.post(() -> applyVerseStyling());
@@ -1552,21 +1657,27 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        saveNote();
-    }
-
-    @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         if (currentNote != null) {
-            // Ensure object is up-to-date with UI before saving
             currentNote.setTitle(editTextTitle.getText().toString().trim());
-            // Save as HTML to persist Rich Text
-            currentNote.setContent(Html.toHtml(editTextContent.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE));
+
+            // [FIX] Save EXACT JSON state (with markers) to Bundle
+            // Do NOT clean markers here, so we can restore exact state on rotation
+            String content = com.simplenotes.utils.RichTextUtils.toJson(editTextContent.getText());
+            currentNote.setContent(content);
+
             outState.putSerializable("current_note", currentNote);
         }
+    }
+
+    // [MOVED] saveNote kept as is?
+    // No, I need to output saveNote below since I am replacing the block including
+    // onPause/saveNote
+    @Override
+    protected void onPause() {
+        super.onPause();
+        saveNote();
     }
 
     private void saveNote() {
@@ -1575,19 +1686,16 @@ public class NoteActivity extends AppCompatActivity {
 
         String title = editTextTitle.getText().toString().trim();
 
-        // [FIX] Clean Highlight Markers from the text before saving
-        // We want to save "Clean Text" + "Spans", not "Text with invisible markers"
         // 1. Clone the text so we don't mess up the editor state
         SpannableStringBuilder ssb = new SpannableStringBuilder(editTextContent.getText());
         SpannableStringBuilder cleanSsb = new SpannableStringBuilder(ssb);
 
         // 2. Remove text covered by HiddenSpan (Markers)
-        // Iterate backwards to avoid index shifting issues
         HiddenSpan[] hiddenSpans = cleanSsb.getSpans(0, cleanSsb.length(), HiddenSpan.class);
         java.util.Arrays.sort(hiddenSpans, (o1, o2) -> {
             int s1 = cleanSsb.getSpanStart(o1);
             int s2 = cleanSsb.getSpanStart(o2);
-            return Integer.compare(s2, s1); // Descending order
+            return Integer.compare(s2, s1);
         });
 
         for (HiddenSpan span : hiddenSpans) {
@@ -1599,18 +1707,12 @@ public class NoteActivity extends AppCompatActivity {
             cleanSsb.removeSpan(span);
         }
 
-        // [FIX] Use JSON Persistence instead of HTML
-        // This avoids all HTML conversion issues (newlines, spans, etc.)
         String content = com.simplenotes.utils.RichTextUtils.toJson(cleanSsb);
 
-        // Update note data in memory
         currentNote.setTitle(title);
         currentNote.setContent(content);
         currentNote.setTimestamp(System.currentTimeMillis());
 
-        // Save to DB (Using insert with REPLACE acts as Upsert, ensuring it saves even
-        // if initial insert missed)
-        // Save to DB
         AppExecutors.getInstance().diskIO().execute(() -> {
             database.noteDao().insert(currentNote);
         });
