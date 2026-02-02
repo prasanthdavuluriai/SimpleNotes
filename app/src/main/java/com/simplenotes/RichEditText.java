@@ -123,15 +123,32 @@ public class RichEditText extends AppCompatMultiAutoCompleteTextView {
 
     @Override
     protected void performFiltering(CharSequence text, int keyCode) {
-        // [FIX] Clean invisible markers from the query text before filtering
-        // This ensures that "G\u200C{1}en\u200D" becomes "Gen" and matches "Genesis"
-        if (text != null) {
-            String raw = text.toString();
-            // Regex to remove markers: \u200C, \u200D, and {\d+}
-            String clean = raw.replaceAll("\u200C|\\{\\d+\\}|\u200D", "");
-            text = clean;
-        }
+        // [FIX] REVERTED: Do NOT clean text here.
+        // Cleaning here shortens the text, but super.performFiltering() uses
+        // getSelectionEnd()
+        // which returns the cursor position in the ORIGINAL (raw) text.
+        // behavior: cursor > text.length() -> IndexOutOfBoundsException -> CRASH.
         super.performFiltering(text, keyCode);
+    }
+
+    @Override
+    protected void performFiltering(CharSequence text, int start, int end, int keyCode) {
+        // [FIX] Clean invisible markers from the token range before filtering
+        // We do this HERE because 'start' and 'end' are valid indices into the RAW
+        // 'text'.
+        try {
+            if (start >= 0 && end <= text.length() && start <= end) {
+                CharSequence rawToken = text.subSequence(start, end);
+                String cleanToken = rawToken.toString().replaceAll("\u200C|\\{\\d+\\}|\u200D", "");
+                getFilter().filter(cleanToken, this);
+            } else {
+                getFilter().filter("", this);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Fail safely
+            getFilter().filter("", this);
+        }
     }
 
     public interface OnReferToListener {
