@@ -41,7 +41,6 @@ public class NoteActivity extends AppCompatActivity {
 
     // Highlighting
     private int[] highlightColors;
-    private String[] highlightColorNames;
     private int[] textColors; // [NEW] Class field
 
     // Settings
@@ -72,7 +71,6 @@ public class NoteActivity extends AppCompatActivity {
 
     // Refer To State
     private String pendingReferToReference;
-    private int pendingReferToStart;
     private int pendingReferToEnd;
 
     // Text Watcher State
@@ -139,7 +137,6 @@ public class NoteActivity extends AppCompatActivity {
         // Setup Refer To Listener
         editTextContent.setOnReferToListener((text, start, end) -> {
             pendingReferToReference = text;
-            pendingReferToStart = start;
             pendingReferToEnd = end;
 
             // Open Version Sheet for Selection
@@ -183,31 +180,14 @@ public class NoteActivity extends AppCompatActivity {
 
     private void checkStylesAtCursor(int position) {
         android.text.Editable editable = editTextContent.getText();
-        if (editable == null)
-            return;
-        if (position < 0)
+        if (editable == null || position < 0 || isTyping || isLoading)
             return;
 
-        // Prevent race conditions: Do not check styles while we are programmatically
-        // modifying text
-        if (isTyping)
-            return;
-
-        // [NEW] Also ignore if we are loading content programmatically
-        if (isLoading)
-            return;
-
-        // [NEW] If user manually toggled styles at this exact position, DO NOT override
-        // them
-        // This prevents the auto-detector from immediately undoing the user's click
         if (position == manualOverridePosition) {
             return;
         } else {
-            // Cursor moved, so we are back to auto-sensing mode
             manualOverridePosition = -1;
         }
-
-        // ... (rest of checkStylesAtCursor) ...
     }
 
     private void setupStickyFormatting() {
@@ -366,16 +346,6 @@ public class NoteActivity extends AppCompatActivity {
                 editable.setSpan(new ForegroundColorSpan(color), end, spanEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         }
-    }
-
-    // reset pending?
-    private void resetPendingStyles() {
-        pendingBold = false;
-        pendingItalic = false;
-        pendingUnderline = false;
-        pendingTextColor = null;
-        pendingHighlightColor = null;
-        updateToolbarUI();
     }
 
     private void updateToolbarUI() {
@@ -925,20 +895,6 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
-    private void appendVerseToContentFallback(String verseText) {
-        String currentContent = editTextContent.getText().toString();
-        SpannableStringBuilder ssb = new SpannableStringBuilder(currentContent);
-        if (!currentContent.isEmpty() && !currentContent.endsWith("\n")) {
-            ssb.append("\n");
-        }
-        String marker = "\u200B";
-        String formattedVerse = marker + "\"" + verseText + "\"" + marker;
-        ssb.append(formattedVerse);
-        editTextContent.setText(ssb);
-        editTextContent.setSelection(ssb.length());
-        applyVerseStyling();
-    }
-
     private void fetchAndInsertReferTo(String reference, String versionId, int insertPos) {
         // Reuse fetch logic but with specific insertion
         AppExecutors.getInstance().diskIO().execute(() -> {
@@ -1067,7 +1023,6 @@ public class NoteActivity extends AppCompatActivity {
                 ContextCompat.getColor(this, R.color.highlight_purple),
                 ContextCompat.getColor(this, R.color.highlight_peach)
         };
-        highlightColorNames = new String[] { "Gold", "Blue", "Green", "Pink", "Purple", "Peach" };
 
         textColors = new int[] {
                 ContextCompat.getColor(this, R.color.text_black),

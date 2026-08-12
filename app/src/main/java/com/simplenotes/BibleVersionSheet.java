@@ -48,22 +48,34 @@ public class BibleVersionSheet extends BottomSheetDialogFragment {
     }
 
     private void loadVersions() {
+        android.content.Context context = getContext();
+        if (context == null)
+            return;
+
+        android.content.Context appContext = context.getApplicationContext();
+
         AppExecutors.getInstance().diskIO().execute(() -> {
             // Always try to seed new versions if they don't exist
-            seedVersions();
+            seedVersions(appContext);
 
-            List<BibleVersion> list = AppDatabase.getDatabase(getContext()).bibleDao().getAllVersions();
+            List<BibleVersion> list = AppDatabase.getDatabase(appContext).bibleDao().getAllVersions();
 
             List<BibleVersion> finalList = list;
             AppExecutors.getInstance().mainThread().execute(() -> {
-                versions = finalList;
-                adapter.notifyDataSetChanged();
+                if (isAdded() && getContext() != null) {
+                    versions = finalList;
+                    if (adapter != null) {
+                        adapter.notifyDataSetChanged();
+                    }
+                }
             });
         });
     }
 
-    private void seedVersions() {
-        BibleDao dao = AppDatabase.getDatabase(getContext()).bibleDao();
+    private void seedVersions(android.content.Context context) {
+        if (context == null)
+            return;
+        BibleDao dao = AppDatabase.getDatabase(context).bibleDao();
 
         // Helper to insert only if missing (to preserve isDownloaded state)
         safeInsert(dao, new BibleVersion("kjv", "King James Version", false));

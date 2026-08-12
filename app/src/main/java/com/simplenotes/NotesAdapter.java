@@ -91,7 +91,12 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
                 }
             });
 
-            buttonMore.setOnClickListener(v -> showPopupMenu(v, notes.get(getAdapterPosition())));
+            buttonMore.setOnClickListener(v -> {
+                int pos = getAdapterPosition();
+                if (pos != RecyclerView.NO_POSITION && pos < notes.size()) {
+                    showPopupMenu(v, notes.get(pos));
+                }
+            });
         }
 
         private void showPopupMenu(View view, Note note) {
@@ -122,11 +127,16 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.NoteViewHold
         }
 
         public void bind(Note note) {
-            textViewTitle.setText(note.getTitle().isEmpty() ? "Untitled" : note.getTitle());
-            if (note.getContent().isEmpty()) {
+            if (note == null)
+                return;
+
+            String title = note.getTitle();
+            textViewTitle.setText(title == null || title.isEmpty() ? "Untitled" : title);
+
+            String content = note.getContent();
+            if (content == null || content.isEmpty()) {
                 textViewContent.setText("No content");
             } else {
-                String content = note.getContent();
                 if (content != null && content.trim().startsWith("{")) {
                     // [FIX] JSON format: Extract raw text for preview
                     try {

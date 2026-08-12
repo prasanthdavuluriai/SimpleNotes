@@ -63,14 +63,6 @@ public class BibleDownloader {
         return VERSION_URLS.containsKey(versionId) || versionId.equals("tel");
     }
 
-    /**
-     * @deprecated Use downloadVersion instead
-     */
-    @Deprecated
-    public static void downloadKJV(Context context, DownloadCallback callback) {
-        downloadVersion(context, "kjv", callback);
-    }
-
     public static void downloadVersion(Context context, String versionId, DownloadCallback callback) {
         if (versionId.equals("tel")) {
             downloadTelugu(context, callback);
@@ -83,7 +75,7 @@ public class BibleDownloader {
             return;
         }
 
-        new Thread(() -> {
+        com.simplenotes.AppExecutors.getInstance().diskIO().execute(() -> {
             try {
                 OkHttpClient client = new OkHttpClient();
                 Request request = new Request.Builder().url(url).build();
@@ -176,18 +168,18 @@ public class BibleDownloader {
                 db.bibleDao().markVersionDownloaded(versionId);
 
                 // Notify Main Thread
-                new android.os.Handler(android.os.Looper.getMainLooper()).post(callback::onSuccess);
+                com.simplenotes.AppExecutors.getInstance().mainThread().execute(callback::onSuccess);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                new android.os.Handler(android.os.Looper.getMainLooper())
-                        .post(() -> callback.onFailure(e.getMessage()));
+                com.simplenotes.AppExecutors.getInstance().mainThread()
+                        .execute(() -> callback.onFailure(e.getMessage()));
             }
-        }).start();
+        });
     }
 
     private static void downloadTelugu(Context context, DownloadCallback callback) {
-        new Thread(() -> {
+        com.simplenotes.AppExecutors.getInstance().diskIO().execute(() -> {
             try {
                 OkHttpClient client = new OkHttpClient();
                 Gson gson = new Gson();
@@ -248,14 +240,14 @@ public class BibleDownloader {
                 db.bibleDao().insertVerses(allVerses);
                 db.bibleDao().markVersionDownloaded("tel");
 
-                new android.os.Handler(android.os.Looper.getMainLooper()).post(callback::onSuccess);
+                com.simplenotes.AppExecutors.getInstance().mainThread().execute(callback::onSuccess);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                new android.os.Handler(android.os.Looper.getMainLooper())
-                        .post(() -> callback.onFailure(e.getMessage()));
+                com.simplenotes.AppExecutors.getInstance().mainThread()
+                        .execute(() -> callback.onFailure(e.getMessage()));
             }
-        }).start();
+        });
     }
 
     // --- Telugu JSON Mapping Classes ---
